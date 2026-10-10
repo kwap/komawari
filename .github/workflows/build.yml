@@ -54,4 +54,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" build/vita/komawari.vpk \
             --title "Komawari $GITHUB_REF_NAME" \
-            --notes "Komawari for the PS Vita. Copy \`komawari.vpk\` to the Vita with \`uv run komawari install\` and install it from VitaShell, as described in the [manual](https://kwap.github.io/komawari/)."
+            --notes "Komawari for the PS Vita. Copy \`komawari.vpk\` to the Vita with \`uv run komawari install\` and install it from VitaShell, as described in the [manual](https://kwap.io/komawari/)."

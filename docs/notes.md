@@ -4,7 +4,7 @@ Last updated: 2026-10-10.
 
 ## Current state
 
-Komawari is public: the code at https://github.com/kwap/komawari and the manual at https://kwap.github.io/komawari/.
+Komawari is public: the code at https://github.com/kwap/komawari and the manual at https://kwap.io/komawari/.
 
 The reader works in a window on the computer and in the Vita3K emulator: a shelf for choosing a comic by its cover, then panel-by-panel reading with a gliding view. It has not run on a real Vita.
 
@@ -103,6 +103,7 @@ The emulator:
 - Pushing a tag that starts with `v` also publishes the package as a release: `git tag v0.2.0 && git push origin v0.2.0`.
 - `komawari install` uses `build/vita/komawari.vpk` when the reader was built on this computer. Otherwise it downloads `https://github.com/kwap/komawari/releases/latest/download/komawari.vpk` with `curl`.
 - The website is `index.html`, served by GitHub Pages from the top folder of the `main` branch. The empty file `.nojekyll` tells GitHub to serve the files as they are.
+- Its address is https://kwap.io/komawari/. The domain `kwap.io` is set on the owner's personal site project (`kwap/kwap.github.io`), and GitHub then serves the page of every other project of the account under it. Nothing in this repository sets the address. The older address, `kwap.github.io/komawari`, is sent on to the new one.
 
 ## On the Vita: what the user's guide leaves out
 

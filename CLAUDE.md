@@ -70,5 +70,5 @@ uv run komawari artwork                                    # redraw the pictures
 - `docs/licences.md`: the licence of every tool and model used.
 - `docs/panels-format.md`: the structure of `panels.json`. Change it together with `src/komawari/book.py` and the reader.
 - `README.md`: the user's guide, for someone who wants Komawari on their Vita and is not technical. Keep it short and free of jargon: the steps from nothing to reading, the reader's buttons, the commands. Keep it in step with `src/komawari/cli.py` and `reader/input.c`. What only a developer needs goes in `docs/notes.md`.
-- `index.html`: the manual, built from `README.md`. It is also the website, https://kwap.github.io/komawari/, which GitHub serves from the `main` branch. Never edit it by hand. After changing `README.md`, run `uv run komawari manual` and commit the new page with the change.
+- `index.html`: the manual, built from `README.md`. It is also the website, https://kwap.io/komawari/, which GitHub serves from the `main` branch. Never edit it by hand. After changing `README.md`, run `uv run komawari manual` and commit the new page with the change.
 - `.github/workflows/build.yml` builds `komawari.vpk` on GitHub on every push. Pushing a tag such as `v0.2.0` publishes it as a release, which is where `komawari install` downloads the reader from.
