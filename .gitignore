@@ -1,0 +1,46 @@
+# Comic material is copyrighted and must never be committed.
+# The folder itself is kept (via .gitkeep) so it exists after a clone.
+/comics/*
+!/comics/.gitkeep
+
+# Safety net: comic archives and image files anywhere in the repository.
+*.cbz
+*.cbr
+*.cb7
+*.zip
+*.rar
+*.7z
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.avif
+# ...except the reader's own pictures for the Vita's home screen.
+!/reader/sce_sys/**/*.png
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+
+# macOS
+.DS_Store
+
+# Prepared comics: extracted pages and their panels.json, and the copies sized for the Vita
+/books/
+/for_vita/
+
+# IDE and CMake build folders
+.idea/
+cmake-build-*/
+/build/
+
+# The last `komawari test`: a few extracted pages and their report
+/test/

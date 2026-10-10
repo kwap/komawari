@@ -1,0 +1,308 @@
+<!doctype html>
+<!-- Built by `komawari manual` from README.md. Do not change this file; change that one. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Komawari: Comics, one panel at a time. Built for the PS Vita.</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-14 -14 128 128' style='background: %23111114' aria-hidden='true'%3E%3Cpolygon points='0,0 100,0 100,40 0,48' fill='%23f2efe6'/%3E%3Cpolygon points='0,55 56.5,50.5 44.5,100 0,100' fill='%23f2efe6'/%3E%3Cpolygon points='63.5,49.9 100,47 100,100 51.5,100' fill='%233d8fe6'/%3E%3C/svg%3E">
+<style>
+@font-face { font-family: "Komawari name"; src: url("reader/artwork/DelaGothicOne-Regular.ttf"); font-display: swap; }
+:root {
+  color-scheme: light dark;
+  --accent: #3d8fe6;
+  --bg: #f8f6f0; --fg: #111114; --muted: #6a675f; --line: #ddd9cc; --soft: #ece8dc; --link: #1c6cc4;
+  --band: #111114;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111114; --fg: #e6e3da; --muted: #a29e95; --line: #303038; --soft: #1f1f25; --link: #72b3f3;
+    --band: #19191e;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 20px; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+
+/* The band at the top: dark like the reader, with a slanted lower edge like the gutters of the mark. */
+header {
+  background: var(--band); color: #f2efe6; padding: 44px 24px 76px;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 36px), 0 100%);
+}
+.band { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
+.band svg { width: 88px; height: 88px; flex: none; }
+.band h1 {
+  margin: 0; font: 400 46px/1 "Komawari name", system-ui, sans-serif;
+  letter-spacing: 0.02em; text-transform: uppercase;
+}
+.band .japanese { margin: 12px 0 0; font: 400 20px/1 "Komawari name", system-ui, sans-serif; color: var(--accent); }
+.band .tagline { margin: 0 0 0 auto; text-align: right; font-size: 19px; font-weight: 700; line-height: 1.25; }
+.band .tagline span { display: block; }
+.band .tagline .platform {
+  margin-top: 10px; font-size: 14px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent);
+}
+
+.layout {
+  max-width: 1160px; margin: 0 auto; padding: 12px 24px 80px;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 52px;
+}
+
+/* The contents list stays in view while the text scrolls. */
+nav { position: sticky; top: 20px; align-self: start; max-height: calc(100vh - 40px); overflow-y: auto;
+  font-size: 14px; line-height: 1.35; }
+nav ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); }
+nav li a {
+  display: block; margin-left: -2px; padding: 4px 0 4px 14px; border-left: 2px solid transparent;
+  color: var(--muted); text-decoration: none;
+}
+nav li a:hover { color: var(--fg); border-left-color: var(--accent); }
+
+main { min-width: 0; }
+main h2 { margin: 52px 0 14px; padding-top: 26px; border-top: 1px solid var(--line); font-size: 23px; line-height: 1.25; }
+main h3 { margin: 36px 0 10px; font-size: 17px; }
+main p, main ul, main ol, main pre, main table { margin: 0 0 16px; }
+main p, main li { max-width: 74ch; }
+main li + li { margin-top: 4px; }
+main li pre { margin: 10px 0 12px; }
+a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+code {
+  font: 0.87em/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  background: var(--soft); padding: 0.12em 0.38em; border-radius: 4px;
+  font-variant-ligatures: none; /* keeps the two hyphens of --ltr apart */
+}
+a code { color: inherit; }
+pre {
+  background: var(--soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
+  padding: 14px 18px; overflow-x: auto;
+}
+pre code { background: none; padding: 0; font-size: 13px; }
+/* A table is as wide as it needs to be, and scrolls sideways by itself on a narrow screen. */
+table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 24px 9px 0; border-bottom: 1px solid var(--line); }
+th { font-size: 13px; font-weight: 600; color: var(--muted); }
+th:last-child, td:last-child { padding-right: 0; }
+td:first-child { white-space: nowrap; }
+footer { margin-top: 80px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+@media (max-width: 860px) {
+  .layout { display: block; }
+  nav { position: static; max-height: none; margin-bottom: 40px; }
+  .band .tagline { margin: 0; flex-basis: 100%; text-align: left; font-size: 17px; }
+  .band .tagline span { display: inline; }
+  .band .tagline .platform { display: block; margin-top: 6px; }
+  .band svg { width: 64px; height: 64px; }
+  .band h1 { font-size: 34px; }
+}
+</style>
+</head>
+<body>
+<header>
+<div class="band">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><polygon points="0,0 100,0 100,40 0,48" fill="currentColor"/><polygon points="0,55 56.5,50.5 44.5,100 0,100" fill="currentColor"/><polygon points="63.5,49.9 100,47 100,100 51.5,100" fill="var(--accent)"/></svg>
+<div>
+<h1>Komawari</h1>
+<p class="japanese">コマ割り</p>
+</div>
+<p class="tagline"><span>Comics,</span> <span>one panel</span> <span>at a time.</span> <span class="platform">Built for the PS Vita</span></p>
+</div>
+</header>
+<div class="layout">
+<nav aria-label="Contents">
+<ol>
+<li><a href="#what-you-need">What you need</a></li>
+<li><a href="#1-set-up-the-computer">1. Set up the computer</a></li>
+<li><a href="#2-prepare-your-comics">2. Prepare your comics</a></li>
+<li><a href="#3-copy-to-the-vita">3. Copy to the Vita</a></li>
+<li><a href="#reading">Reading</a></li>
+<li><a href="#commands">Commands</a></li>
+<li><a href="#if-something-goes-wrong">If something goes wrong</a></li>
+<li><a href="#licence">Licence</a></li>
+</ol>
+</nav>
+<main>
+<p>Read comics on the PS Vita, one panel at a time. A whole page is too small to read on the Vita's screen, so Komawari shows one panel and glides to the next.</p>
+<p>You prepare your comics on a computer, copy them to the Vita and read them there.</p>
+<h2 id="what-you-need">What you need</h2>
+<ul>
+<li>A PS Vita that runs homebrew apps, with VitaShell on it, and its USB cable.</li>
+<li>A Mac or a Linux computer.</li>
+<li>Your comics as CBZ or CBR files.</li>
+</ul>
+<h2 id="1-set-up-the-computer">1. Set up the computer</h2>
+<p>You do this once. Open the Terminal and paste each block.</p>
+<p>On Fedora or Nobara Linux only (not tried yet):</p>
+<pre><code>sudo dnf install git bsdtar
+</code></pre>
+<p>Install uv, the tool that runs Komawari:</p>
+<pre><code>curl -LsSf https://astral.sh/uv/install.sh | sh
+</code></pre>
+<p>Close the Terminal and open it again. Then download Komawari:</p>
+<pre><code>git clone --recurse-submodules https://github.com/kwap/komawari.git
+cd komawari
+uv sync
+</code></pre>
+<p>On a Mac, this may offer to install Apple's developer tools. Say yes, wait until it is done and paste the block again.</p>
+<p>There is now a <code>komawari</code> folder in your home folder. Every command below is run inside it. In a new Terminal window, go there first:</p>
+<pre><code>cd komawari
+</code></pre>
+<h2 id="2-prepare-your-comics">2. Prepare your comics</h2>
+<ol>
+<li>
+<p>Copy your comic files into the <code>comics</code> folder inside the <code>komawari</code> folder.</p>
+</li>
+<li>
+<p>In the Terminal, run:</p>
+<pre><code>uv run komawari prepare
+</code></pre>
+</li>
+</ol>
+<p>This takes a few minutes per comic. Comics that are already prepared are skipped, so run it again whenever you add new ones.</p>
+<p>Komawari expects manga, read right to left. For a comic read left to right, run this instead, with the name of your file:</p>
+<pre><code>uv run komawari prepare &quot;comics/My Comic.cbz&quot; --ltr --force
+</code></pre>
+<h2 id="3-copy-to-the-vita">3. Copy to the Vita</h2>
+<p>Not yet tried with a real Vita.</p>
+<ol>
+<li>
+<p>On the Vita, open VitaShell, press START and set &quot;SELECT button&quot; to &quot;USB&quot;.</p>
+</li>
+<li>
+<p>Connect the Vita to the computer with the cable and press SELECT.</p>
+</li>
+<li>
+<p>On the computer, run:</p>
+<pre><code>uv run komawari install
+uv run komawari transfer
+</code></pre>
+</li>
+<li>
+<p>Eject the Vita's drive on the computer, then leave USB mode on the Vita.</p>
+</li>
+<li>
+<p>In VitaShell, go to <code>ux0:data/</code>, press Cross on <code>komawari.vpk</code> and answer yes.</p>
+</li>
+</ol>
+<p>Komawari is now on the Vita's home screen.</p>
+<p>To add comics later, repeat part 2 and steps 1 to 4. Step 5 is only needed once.</p>
+<h2 id="reading">Reading</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Buttons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Choose a comic</td>
+<td>D-pad left and right</td>
+</tr>
+<tr>
+<td>Open it</td>
+<td>Cross</td>
+</tr>
+<tr>
+<td>Next panel</td>
+<td>D-pad right, R or Cross</td>
+</tr>
+<tr>
+<td>Previous panel</td>
+<td>D-pad left or L</td>
+</tr>
+<tr>
+<td>Whole page and back</td>
+<td>D-pad up or Triangle</td>
+</tr>
+<tr>
+<td>Back to your comics</td>
+<td>Circle</td>
+</tr>
+<tr>
+<td>Leave</td>
+<td>PS button</td>
+</tr>
+</tbody>
+</table>
+<p>With only one comic on the Vita, it opens straight away.</p>
+<h2 id="commands">Commands</h2>
+<p>Run them in the <code>komawari</code> folder.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv run komawari prepare</code></td>
+<td>Prepares every comic in <code>comics</code>.</td>
+</tr>
+<tr>
+<td><code>uv run komawari test</code></td>
+<td>Shows how the panels were found on 5 random pages of your newest comic. Open <code>test/report.html</code> to look.</td>
+</tr>
+<tr>
+<td><code>uv run komawari install</code></td>
+<td>Downloads Komawari for the Vita and copies it there.</td>
+</tr>
+<tr>
+<td><code>uv run komawari transfer</code></td>
+<td>Copies new comics to the Vita.</td>
+</tr>
+<tr>
+<td><code>uv run komawari list</code></td>
+<td>Lists the comics on the Vita and the free space.</td>
+</tr>
+<tr>
+<td><code>uv run komawari remove NAME</code></td>
+<td>Deletes a comic from the Vita.</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--ltr</code></td>
+<td>For <code>prepare</code> and <code>test</code>: the comic reads left to right.</td>
+</tr>
+<tr>
+<td><code>--rtl</code></td>
+<td>For <code>prepare</code> and <code>test</code>: the comic reads right to left.</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td>For <code>prepare</code>: prepare a comic again.</td>
+</tr>
+<tr>
+<td><code>--card FOLDER</code></td>
+<td>For the four Vita commands: where the Vita's drive is, if it is not found.</td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td>Shows everything a command can do.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="if-something-goes-wrong">If something goes wrong</h2>
+<ul>
+<li><strong>&quot;No Vita memory card found.&quot;</strong> Check that the Vita is in USB mode. If you can see its drive on the computer, name it: <code>uv run komawari transfer --card /Volumes/NAME</code> on a Mac, <code>--card /run/media/YOU/NAME</code> on Linux.</li>
+<li><strong>Copying does not work at all.</strong> Copy by hand: the folders in <code>for_vita</code> go into <code>data/komawari</code> on the Vita's drive. <code>komawari.vpk</code>, from the <a href="https://github.com/kwap/komawari/releases/latest">download page</a>, goes into <code>data</code>.</li>
+<li><strong>A red screen, then Komawari closes.</strong> It found no comics on the Vita. <code>uv run komawari list</code> shows what is there.</li>
+<li><strong>Panels come in the wrong order.</strong> The comic was prepared for the wrong direction. Prepare it again with <code>--ltr --force</code> or <code>--rtl --force</code>, then run <code>transfer</code>.</li>
+<li><strong>A panel is cut badly.</strong> The panels are found by a program, and some come out wrong. Press Triangle to see the whole page.</li>
+</ul>
+<h2 id="licence">Licence</h2>
+<p>Komawari is free to use, change and share under the MIT licence; see <code>LICENSE</code>. It finds the panels with <a href="https://github.com/njean42/kumiko">Kumiko</a>, a separate program with its own licence. <code>docs/licences.md</code> lists everything Komawari uses.</p>
+<footer>This page is built from <code>README.md</code>
+by <code>uv run komawari manual</code>.</footer>
+</main>
+</div>
+</body>
+</html>

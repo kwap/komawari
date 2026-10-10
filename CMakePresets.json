@@ -1,0 +1,32 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "desktop",
+      "displayName": "Desktop (a window on this computer)",
+      "binaryDir": "${sourceDir}/build/desktop",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "vita",
+      "displayName": "PS Vita package (.vpk)",
+      "binaryDir": "${sourceDir}/build/vita",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "KOMAWARI_VITA": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "desktop",
+      "configurePreset": "desktop"
+    },
+    {
+      "name": "vita",
+      "configurePreset": "vita"
+    }
+  ]
+}

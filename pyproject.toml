@@ -1,0 +1,35 @@
+[project]
+name = "komawari"
+version = "0.1.0"
+description = "Finds the panels on comic pages so a PS Vita reader can show a comic panel by panel."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "pillow",
+    # Turns the Markdown files into the HTML manual (`komawari manual`).
+    "markdown-it-py>=4.2.0",
+    # Kumiko (third_party/kumiko) runs with this environment's Python and
+    # needs these. It was tested with OpenCV 4, not 5.
+    "opencv-python-headless<5",
+    "numpy",
+    "requests",
+]
+
+[project.scripts]
+komawari = "komawari.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.25,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.pyright]
+include = ["src"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+]
