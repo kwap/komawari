@@ -1,0 +1,9 @@
+# How the C code in reader/ is laid out. IDEs and clang-format both read this.
+BasedOnStyle: LLVM
+IndentWidth: 4
+ColumnLimit: 100
+BreakBeforeBraces: Linux
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+IndentCaseLabels: false
+SortIncludes: Never

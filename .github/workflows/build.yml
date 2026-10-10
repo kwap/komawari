@@ -1,0 +1,57 @@
+# Builds the reader for the PS Vita (komawari.vpk) on every push, so that a
+# change that breaks the build is noticed at once.
+#
+# Pushing a tag that starts with "v" (for example v0.2.0) also publishes the
+# package as a release. `komawari install` downloads the reader from there.
+name: Build the reader
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  vita:
+    name: komawari.vpk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed to publish a release; reading the code is included
+    steps:
+      - name: Fetch the code, with cJSON
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+
+      # The same commands as in docs/notes.md, "Building the reader".
+      # VDPM_NONINTERACTIVE keeps vdpm from asking "Proceed with installation?".
+      - name: Install the Vita SDK
+        env:
+          VDPM_NONINTERACTIVE: 1
+        run: |
+          git clone --depth 1 https://github.com/vitasdk/vdpm "$RUNNER_TEMP/vdpm"
+          cd "$RUNNER_TEMP/vdpm"
+          ./bootstrap-vitasdk.sh --install-dir "$HOME/vitasdk"
+          VITASDK="$HOME/vitasdk" "$HOME/vitasdk/bin/vdpm" install sdl2 sdl2_image
+
+      - name: Build the package
+        run: |
+          cmake --preset vita
+          cmake --build --preset vita
+
+      - name: Keep the package as a download of this run
+        uses: actions/upload-artifact@v7
+        with:
+          name: komawari.vpk
+          path: build/vita/komawari.vpk
+          if-no-files-found: error
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/vita/komawari.vpk \
+            --title "Komawari $GITHUB_REF_NAME" \
+            --notes "Komawari for the PS Vita. Copy \`komawari.vpk\` to the Vita with \`uv run komawari install\` and install it from VitaShell, as described in the [manual](https://kwap.github.io/komawari/)."
