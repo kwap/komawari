@@ -1,14 +1,15 @@
 """Builds the manual: one HTML page made from a Markdown file.
 
 The text is written in Markdown (README.md) and stays readable there. This
-module turns it into a page with a contents list, in the look of the reader's
-artwork, for opening in a browser.
+module turns it into a page in the look of the owner's home page, kwap.io:
+heavy narrow capitals, thick rules, and a switch between light and dark.
 
 The markdown-it-py library turns Markdown into HTML. It first cuts the text
 into a list of "tokens" (a heading opens, some text, the heading closes, ...)
 and then writes HTML from that list. This module steps in between: it takes
-the title off the top, for the band of the page, and gives each heading a name
-that the contents list can link to.
+the title off the top, for the top of the page, puts the introduction next to
+the start button, and gives each heading a name that the contents list can
+link to.
 """
 
 import html
@@ -23,7 +24,6 @@ from komawari.artwork import (
     ACCENT,
     APP_NAME_JAPANESE,
     INK,
-    INK_LIGHT,
     MARK_LEFT,
     MARK_RIGHT,
     MARK_TOP,
@@ -33,8 +33,12 @@ from komawari.artwork import (
     Shape,
 )
 
-# Shown under the tagline in the band at the top of the page.
+# Shown next to the name at the top of the page.
 PLATFORM_LINE = "Built for the PS Vita"
+
+# Where the links in the top bar lead.
+HOME_URL = "https://kwap.io/"
+CODE_URL = "https://github.com/kwap/komawari"
 
 
 @dataclass
@@ -43,11 +47,8 @@ class Heading:
     anchor: str  # the name links point to: href="#anchor"
 
 
-def build_manual(source: Path, name_font_url: str) -> str:
-    """Returns the whole HTML page. The file's title becomes the title of the page.
-
-    name_font_url is the path from the page to the font file used for that title.
-    """
+def build_manual(source: Path) -> str:
+    """Returns the whole HTML page. The file's title becomes the title of the page."""
     markdown = MarkdownIt("commonmark").enable("table")
     tokens = markdown.parse(source.read_text(encoding="utf-8"))
     # A heading is three tokens: it opens, its text, it closes.
@@ -56,12 +57,24 @@ def build_manual(source: Path, name_font_url: str) -> str:
     title = html.escape(_plain_text(tokens[1]))
     body = tokens[3:]
     sections = _name_headings(body)
-    text: str = markdown.renderer.render(body, markdown.options, {})
+    # What comes before the first section is the introduction. It goes next to the start button.
+    first_section = next(
+        (position for position, token in enumerate(body) if token.type == "heading_open" and token.tag == "h2"),
+        len(body),
+    )
+    introduction: str = markdown.renderer.render(body[:first_section], markdown.options, {})
+    text: str = markdown.renderer.render(body[first_section:], markdown.options, {})
 
     contents = "".join(
         f'<li><a href="#{section.anchor}">{html.escape(section.text)}</a></li>\n' for section in sections
     )
-    tagline = " ".join(f"<span>{line}</span>" for line in TAGLINE_LINES)
+    start = (
+        f'<a class="go" href="#{sections[0].anchor}">Start here <span aria-hidden="true">→</span></a>'
+        if sections
+        else ""
+    )
+    # The last line of the tagline is the coloured second line of the big sentence.
+    sentence = f"{' '.join(TAGLINE_LINES[:-1])} <em>{TAGLINE_LINES[-1]}</em>"
     return f"""<!doctype html>
 <!-- Built by `komawari manual` from {source.as_posix()}. Do not change this file; change that one. -->
 <html lang="en">
@@ -70,29 +83,43 @@ def build_manual(source: Path, name_font_url: str) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}: {" ".join(TAGLINE_LINES)} {PLATFORM_LINE}.</title>
 <link rel="icon" href="data:image/svg+xml,{_icon()}">
-<style>{_style(name_font_url)}</style>
+<script>{THEME_SCRIPT}</script>
+<style>{STYLE}</style>
 </head>
 <body>
-<header>
-<div class="band">
-{_mark("currentColor", "var(--accent)")}
-<div>
-<h1>{title}</h1>
-<p class="japanese">{APP_NAME_JAPANESE}</p>
-</div>
-<p class="tagline">{tagline} <span class="platform">{PLATFORM_LINE}</span></p>
-</div>
+<div class="page">
+<header class="bar">
+<a href="{HOME_URL}">kwap.io</a>
+<nav>
+<a href="{CODE_URL}">Code</a>
+<button class="switch" id="switch" type="button" aria-label="Switch between light and dark">dark</button>
+</nav>
 </header>
-<div class="layout">
-<nav aria-label="Contents">
+<section class="hero">
+<div class="tagrow">
+{_mark("currentColor", _hex(ACCENT))}
+<h1 class="name">{title}</h1>
+<p class="roles"><span lang="ja">{APP_NAME_JAPANESE}</span> · {PLATFORM_LINE}</p>
+</div>
+<p class="lede">{sentence}</p>
+<div class="act">
+{start}
+<div class="lines">
+{introduction}</div>
+</div>
+</section>
+<nav class="contents" aria-label="Contents">
 <ol>
 {contents}</ol>
 </nav>
 <main>
-{text}<footer>This page is built from <code>{html.escape(source.as_posix())}</code>
-by <code>uv run komawari manual</code>.</footer>
-</main>
+{_number_steps(text)}</main>
+<footer>
+<p>This page is built from <code>{html.escape(source.as_posix())}</code> by <code>uv run komawari manual</code>.</p>
+<a href="{HOME_URL}">kwap.io ↗</a>
+</footer>
 </div>
+<script>{SWITCH_SCRIPT}</script>
 </body>
 </html>
 """
@@ -132,6 +159,11 @@ def _new_anchor(text: str, used_anchors: set[str]) -> str:
     return anchor
 
 
+def _number_steps(text: str) -> str:
+    """A heading written as "2. Prepare your comics" gets its number set apart as a small label."""
+    return re.sub(r'(<h2 id="[^"]*">)(\d+)\. ', r"\1<span>\2</span>", text)
+
+
 def _hex(colour: Colour) -> str:
     return "#{:02x}{:02x}{:02x}".format(*colour)
 
@@ -158,102 +190,182 @@ def _icon() -> str:
     return picture.replace('"', "'").replace("#", "%23").replace("<", "%3C").replace(">", "%3E")
 
 
-def _style(name_font_url: str) -> str:
-    return (
-        STYLE.replace("NAME_FONT_URL", name_font_url)
-        .replace("INK_LIGHT", _hex(INK_LIGHT))
-        .replace("INK", _hex(INK))
-        .replace("PAPER", _hex(PAPER))
-        .replace("ACCENT", _hex(ACCENT))
-    )
+# The page follows the system's light or dark setting until the switch is used. The choice is kept under the
+# same name as on kwap.io, so it holds across the owner's pages.
+THEME_SCRIPT = """
+try {
+  var saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") document.documentElement.setAttribute("data-theme", saved);
+} catch (e) {}
+"""
 
+# The switch shows the look it changes to.
+SWITCH_SCRIPT = """
+(function () {
+  var root = document.documentElement;
+  var button = document.getElementById("switch");
+  function current() {
+    return root.getAttribute("data-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  }
+  function label() { button.textContent = current() === "dark" ? "light" : "dark"; }
+  button.addEventListener("click", function () {
+    var next = current() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    label();
+  });
+  label();
+})();
+"""
 
-# The words in capitals are replaced by _style with the colours from artwork.py.
+# The fonts are in the fonts folder next to the page; their licences are there too.
 STYLE = """
-@font-face { font-family: "Komawari name"; src: url("NAME_FONT_URL"); font-display: swap; }
+@font-face {
+  font-family: "Bricolage Grotesque"; font-weight: 500 800; font-stretch: 75% 100%; font-display: swap;
+  src: url("fonts/BricolageGrotesque.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono"; font-weight: 500; font-display: swap;
+  src: url("fonts/IBMPlexMono-Medium.woff2") format("woff2");
+}
 :root {
-  color-scheme: light dark;
-  --accent: ACCENT;
-  --bg: #f8f6f0; --fg: INK; --muted: #6a675f; --line: #ddd9cc; --soft: #ece8dc; --link: #1c6cc4;
-  --band: INK;
+  --bg: #f1eee6; --ink: #0d0d0d; --dim: #57544c; --line: #cbc7ba; --soft: #e3dfd3;
+  --accent: #4b2ff2; --on-accent: #ffffff;
+  --rule: 3px; --edge: 18px; --pad: 28px;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: INK; --fg: #e6e3da; --muted: #a29e95; --line: #303038; --soft: #1f1f25; --link: #72b3f3;
-    --band: INK_LIGHT;
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d; --ink: #f1eee6; --dim: #a5a299; --line: #3a3934; --soft: #22211e;
+    --accent: #cdfa3c; --on-accent: #0d0d0d;
   }
 }
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 20px; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --ink: #f1eee6; --dim: #a5a299; --line: #3a3934; --soft: #22211e;
+  --accent: #cdfa3c; --on-accent: #0d0d0d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 18px; scroll-behavior: smooth; scroll-padding-top: 20px; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 500; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; transition: background 0.25s, color 0.25s;
+}
+a { color: inherit; }
+.page { max-width: 1280px; margin: 0 auto; padding: 0 var(--pad) 64px; }
 
-/* The band at the top: dark like the reader, with a slanted lower edge like the gutters of the mark. */
-header {
-  background: var(--band); color: PAPER; padding: 44px 24px 76px;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 36px), 0 100%);
+/* Heavy narrow capitals */
+.name, .lede, .go, h2, h3 {
+  font-weight: 800; font-stretch: 75%; text-transform: uppercase;
+  letter-spacing: 0.005em; word-spacing: 0.08em; line-height: 0.88;
 }
-.band { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
-.band svg { width: 88px; height: 88px; flex: none; }
-.band h1 {
-  margin: 0; font: 400 46px/1 "Komawari name", system-ui, sans-serif;
-  letter-spacing: 0.02em; text-transform: uppercase;
-}
-.band .japanese { margin: 12px 0 0; font: 400 20px/1 "Komawari name", system-ui, sans-serif; color: var(--accent); }
-.band .tagline { margin: 0 0 0 auto; text-align: right; font-size: 19px; font-weight: 700; line-height: 1.25; }
-.band .tagline span { display: block; }
-.band .tagline .platform {
-  margin-top: 10px; font-size: 14px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent);
-}
-
-.layout {
-  max-width: 1160px; margin: 0 auto; padding: 12px 24px 80px;
-  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 52px;
+/* Labels */
+.bar, .roles, .contents, h2 span, th, footer a {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.72rem; font-weight: 500; font-stretch: 100%;
+  letter-spacing: 0.12em; word-spacing: 0; text-transform: uppercase; line-height: 1.5;
 }
 
-/* The contents list stays in view while the text scrolls. */
-nav { position: sticky; top: 20px; align-self: start; max-height: calc(100vh - 40px); overflow-y: auto;
-  font-size: 14px; line-height: 1.35; }
-nav ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); }
-nav li a {
-  display: block; margin-left: -2px; padding: 4px 0 4px 14px; border-left: 2px solid transparent;
-  color: var(--muted); text-decoration: none;
+/* Top bar */
+.bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--edge) 0; border-bottom: var(--rule) solid var(--ink);
 }
-nav li a:hover { color: var(--fg); border-left-color: var(--accent); }
+.bar a { text-decoration: none; }
+.bar a:hover { text-decoration: underline; }
+.bar nav { display: flex; gap: 26px; align-items: center; }
+.switch {
+  font: inherit; letter-spacing: inherit; text-transform: inherit;
+  background: var(--ink); color: var(--bg); border: 0; padding: 8px 12px; cursor: pointer;
+}
+.switch:hover { background: var(--accent); color: var(--on-accent); }
 
-main { min-width: 0; }
-main h2 { margin: 52px 0 14px; padding-top: 26px; border-top: 1px solid var(--line); font-size: 23px; line-height: 1.25; }
-main h3 { margin: 36px 0 10px; font-size: 17px; }
-main p, main ul, main ol, main pre, main table { margin: 0 0 16px; }
-main p, main li { max-width: 74ch; }
-main li + li { margin-top: 4px; }
+/* Hero: the mark and the name as a tag, the tagline as a very large sentence, then where to start.
+   cqw is 1% of the hero's width. */
+.hero { container-type: inline-size; padding-top: 36px; }
+.tagrow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; }
+.tagrow svg { width: 42px; height: 42px; flex: none; }
+.name { background: var(--accent); color: var(--on-accent); font-size: 1.5rem; line-height: 1; padding: 7px 12px 8px; }
+.roles { color: var(--dim); }
+.lede {
+  font-size: min(13.8vw, 188px);  /* for browsers that do not know cqw */
+  font-size: min(100cqw / 6.5, 199px);  /* the first line is 6.42 times the font size wide, so it always fits */
+  font-optical-sizing: none;  /* one drawing of the letters at every size, which keeps that width true */
+  line-height: 0.84; white-space: nowrap; margin-top: 30px; margin-left: -0.02em;
+}
+.lede em { display: block; font-style: normal; color: var(--accent); }
+.act {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 16px 30px;
+  margin-top: 40px; padding: 20px 0;
+  border-top: var(--rule) solid var(--ink); border-bottom: var(--rule) solid var(--ink);
+}
+.go {
+  display: inline-flex; gap: 12px; flex: none; text-decoration: none; background: var(--ink); color: var(--bg);
+  font-size: 1.6rem; line-height: 1; padding: 18px 24px 20px; transition: background 0.15s, color 0.15s;
+}
+.go:hover { background: var(--accent); color: var(--on-accent); }
+.lines { flex: 1 1 22em; font-size: 1.05rem; line-height: 1.45; }
+.lines p { max-width: 44em; }
+.lines p + p { margin-top: 4px; }
+
+/* The contents list: a row of boxes */
+.contents { margin-top: 20px; }
+.contents ol { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; }
+.contents a { display: block; text-decoration: none; border: var(--rule) solid var(--ink); padding: 7px 12px; }
+.contents a:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* The text: each section's heading sits on a thick rule */
+main h2 {
+  display: flex; align-items: baseline; gap: 14px; margin: 80px 0 24px; padding-bottom: 12px;
+  border-bottom: var(--rule) solid var(--ink); font-size: 1.6rem; line-height: 1;
+}
+main h2 span { color: var(--dim); }
+main h3 { font-size: 1.25rem; margin: 36px 0 12px; }
+main p, main ul, main ol, main pre, main table { margin-bottom: 16px; }
+main p, main li { max-width: 68ch; }
+main ul, main ol { padding-left: 1.4em; }
+main li + li { margin-top: 6px; }
 main li pre { margin: 10px 0 12px; }
-a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+main a, .lines a { text-decoration-thickness: 2px; text-underline-offset: 3px; }
+main a:hover, .lines a:hover { color: var(--accent); }
 code {
-  font: 0.87em/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  background: var(--soft); padding: 0.12em 0.38em; border-radius: 4px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.84em;
+  background: var(--soft); padding: 0.12em 0.4em;
   font-variant-ligatures: none; /* keeps the two hyphens of --ltr apart */
 }
-a code { color: inherit; }
-pre {
-  background: var(--soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
-  padding: 14px 18px; overflow-x: auto;
-}
-pre code { background: none; padding: 0; font-size: 13px; }
+pre { max-width: 46rem; border: var(--rule) solid var(--ink); padding: 14px 18px; overflow-x: auto; line-height: 1.6; }
+pre code { background: none; padding: 0; font-size: 0.8rem; }
 /* A table is as wide as it needs to be, and scrolls sideways by itself on a narrow screen. */
-table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 15px; }
-th, td { text-align: left; vertical-align: top; padding: 9px 24px 9px 0; border-bottom: 1px solid var(--line); }
-th { font-size: 13px; font-weight: 600; color: var(--muted); }
+table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+th, td { text-align: left; vertical-align: top; padding: 10px 28px 10px 0; border-bottom: 1px solid var(--line); }
+th { color: var(--dim); border-bottom: var(--rule) solid var(--ink); }
 th:last-child, td:last-child { padding-right: 0; }
 td:first-child { white-space: nowrap; }
-footer { margin-top: 80px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+footer {
+  margin-top: 88px; padding-top: 18px; border-top: var(--rule) solid var(--ink);
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px 24px;
+  font-size: 0.8rem; color: var(--dim);
+}
+footer a { color: var(--ink); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
 
 @media (max-width: 860px) {
-  .layout { display: block; }
-  nav { position: static; max-height: none; margin-bottom: 40px; }
-  .band .tagline { margin: 0; flex-basis: 100%; text-align: left; font-size: 17px; }
-  .band .tagline span { display: inline; }
-  .band .tagline .platform { display: block; margin-top: 6px; }
-  .band svg { width: 64px; height: 64px; }
-  .band h1 { font-size: 34px; }
+  html { font-size: 17px; }
+  :root { --pad: 16px; }
+  .page { padding-bottom: 48px; }
+  .bar nav { gap: 14px; }
+  .hero { padding-top: 26px; }
+  .lede { margin-top: 22px; }
+  .act { margin-top: 28px; }
+  .go { font-size: 1.35rem; }
+  main h2 { margin-top: 60px; }
+}
+/* On a phone a table row becomes two lines: the first cell, then the second under it. */
+@media (max-width: 600px) {
+  table { width: 100%; }
+  thead { display: none; }
+  tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  td { display: block; padding: 0; border: 0; }
+  td:first-child { white-space: normal; font-weight: 700; margin-bottom: 2px; }
+  td code { white-space: nowrap; }
 }
 """

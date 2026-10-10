@@ -6,108 +6,188 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Komawari: Comics, one panel at a time. Built for the PS Vita.</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-14 -14 128 128' style='background: %23111114' aria-hidden='true'%3E%3Cpolygon points='0,0 100,0 100,40 0,48' fill='%23f2efe6'/%3E%3Cpolygon points='0,55 56.5,50.5 44.5,100 0,100' fill='%23f2efe6'/%3E%3Cpolygon points='63.5,49.9 100,47 100,100 51.5,100' fill='%233d8fe6'/%3E%3C/svg%3E">
+<script>
+try {
+  var saved = localStorage.getItem("theme");
+  if (saved === "light" || saved === "dark") document.documentElement.setAttribute("data-theme", saved);
+} catch (e) {}
+</script>
 <style>
-@font-face { font-family: "Komawari name"; src: url("reader/artwork/DelaGothicOne-Regular.ttf"); font-display: swap; }
+@font-face {
+  font-family: "Bricolage Grotesque"; font-weight: 500 800; font-stretch: 75% 100%; font-display: swap;
+  src: url("fonts/BricolageGrotesque.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono"; font-weight: 500; font-display: swap;
+  src: url("fonts/IBMPlexMono-Medium.woff2") format("woff2");
+}
 :root {
-  color-scheme: light dark;
-  --accent: #3d8fe6;
-  --bg: #f8f6f0; --fg: #111114; --muted: #6a675f; --line: #ddd9cc; --soft: #ece8dc; --link: #1c6cc4;
-  --band: #111114;
+  --bg: #f1eee6; --ink: #0d0d0d; --dim: #57544c; --line: #cbc7ba; --soft: #e3dfd3;
+  --accent: #4b2ff2; --on-accent: #ffffff;
+  --rule: 3px; --edge: 18px; --pad: 28px;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111114; --fg: #e6e3da; --muted: #a29e95; --line: #303038; --soft: #1f1f25; --link: #72b3f3;
-    --band: #19191e;
+  :root:not([data-theme="light"]) {
+    --bg: #0d0d0d; --ink: #f1eee6; --dim: #a5a299; --line: #3a3934; --soft: #22211e;
+    --accent: #cdfa3c; --on-accent: #0d0d0d;
   }
 }
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 20px; }
-body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 system-ui, sans-serif; }
+:root[data-theme="dark"] {
+  --bg: #0d0d0d; --ink: #f1eee6; --dim: #a5a299; --line: #3a3934; --soft: #22211e;
+  --accent: #cdfa3c; --on-accent: #0d0d0d;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 18px; scroll-behavior: smooth; scroll-padding-top: 20px; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: "Bricolage Grotesque", system-ui, sans-serif; font-weight: 500; line-height: 1.5;
+  -webkit-font-smoothing: antialiased; transition: background 0.25s, color 0.25s;
+}
+a { color: inherit; }
+.page { max-width: 1280px; margin: 0 auto; padding: 0 var(--pad) 64px; }
 
-/* The band at the top: dark like the reader, with a slanted lower edge like the gutters of the mark. */
-header {
-  background: var(--band); color: #f2efe6; padding: 44px 24px 76px;
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 36px), 0 100%);
+/* Heavy narrow capitals */
+.name, .lede, .go, h2, h3 {
+  font-weight: 800; font-stretch: 75%; text-transform: uppercase;
+  letter-spacing: 0.005em; word-spacing: 0.08em; line-height: 0.88;
 }
-.band { max-width: 1160px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
-.band svg { width: 88px; height: 88px; flex: none; }
-.band h1 {
-  margin: 0; font: 400 46px/1 "Komawari name", system-ui, sans-serif;
-  letter-spacing: 0.02em; text-transform: uppercase;
-}
-.band .japanese { margin: 12px 0 0; font: 400 20px/1 "Komawari name", system-ui, sans-serif; color: var(--accent); }
-.band .tagline { margin: 0 0 0 auto; text-align: right; font-size: 19px; font-weight: 700; line-height: 1.25; }
-.band .tagline span { display: block; }
-.band .tagline .platform {
-  margin-top: 10px; font-size: 14px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--accent);
-}
-
-.layout {
-  max-width: 1160px; margin: 0 auto; padding: 12px 24px 80px;
-  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 52px;
+/* Labels */
+.bar, .roles, .contents, h2 span, th, footer a {
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.72rem; font-weight: 500; font-stretch: 100%;
+  letter-spacing: 0.12em; word-spacing: 0; text-transform: uppercase; line-height: 1.5;
 }
 
-/* The contents list stays in view while the text scrolls. */
-nav { position: sticky; top: 20px; align-self: start; max-height: calc(100vh - 40px); overflow-y: auto;
-  font-size: 14px; line-height: 1.35; }
-nav ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--line); }
-nav li a {
-  display: block; margin-left: -2px; padding: 4px 0 4px 14px; border-left: 2px solid transparent;
-  color: var(--muted); text-decoration: none;
+/* Top bar */
+.bar {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--edge) 0; border-bottom: var(--rule) solid var(--ink);
 }
-nav li a:hover { color: var(--fg); border-left-color: var(--accent); }
+.bar a { text-decoration: none; }
+.bar a:hover { text-decoration: underline; }
+.bar nav { display: flex; gap: 26px; align-items: center; }
+.switch {
+  font: inherit; letter-spacing: inherit; text-transform: inherit;
+  background: var(--ink); color: var(--bg); border: 0; padding: 8px 12px; cursor: pointer;
+}
+.switch:hover { background: var(--accent); color: var(--on-accent); }
 
-main { min-width: 0; }
-main h2 { margin: 52px 0 14px; padding-top: 26px; border-top: 1px solid var(--line); font-size: 23px; line-height: 1.25; }
-main h3 { margin: 36px 0 10px; font-size: 17px; }
-main p, main ul, main ol, main pre, main table { margin: 0 0 16px; }
-main p, main li { max-width: 74ch; }
-main li + li { margin-top: 4px; }
+/* Hero: the mark and the name as a tag, the tagline as a very large sentence, then where to start.
+   cqw is 1% of the hero's width. */
+.hero { container-type: inline-size; padding-top: 36px; }
+.tagrow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; }
+.tagrow svg { width: 42px; height: 42px; flex: none; }
+.name { background: var(--accent); color: var(--on-accent); font-size: 1.5rem; line-height: 1; padding: 7px 12px 8px; }
+.roles { color: var(--dim); }
+.lede {
+  font-size: min(13.8vw, 188px);  /* for browsers that do not know cqw */
+  font-size: min(100cqw / 6.5, 199px);  /* the first line is 6.42 times the font size wide, so it always fits */
+  font-optical-sizing: none;  /* one drawing of the letters at every size, which keeps that width true */
+  line-height: 0.84; white-space: nowrap; margin-top: 30px; margin-left: -0.02em;
+}
+.lede em { display: block; font-style: normal; color: var(--accent); }
+.act {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 16px 30px;
+  margin-top: 40px; padding: 20px 0;
+  border-top: var(--rule) solid var(--ink); border-bottom: var(--rule) solid var(--ink);
+}
+.go {
+  display: inline-flex; gap: 12px; flex: none; text-decoration: none; background: var(--ink); color: var(--bg);
+  font-size: 1.6rem; line-height: 1; padding: 18px 24px 20px; transition: background 0.15s, color 0.15s;
+}
+.go:hover { background: var(--accent); color: var(--on-accent); }
+.lines { flex: 1 1 22em; font-size: 1.05rem; line-height: 1.45; }
+.lines p { max-width: 44em; }
+.lines p + p { margin-top: 4px; }
+
+/* The contents list: a row of boxes */
+.contents { margin-top: 20px; }
+.contents ol { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; }
+.contents a { display: block; text-decoration: none; border: var(--rule) solid var(--ink); padding: 7px 12px; }
+.contents a:hover { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+/* The text: each section's heading sits on a thick rule */
+main h2 {
+  display: flex; align-items: baseline; gap: 14px; margin: 80px 0 24px; padding-bottom: 12px;
+  border-bottom: var(--rule) solid var(--ink); font-size: 1.6rem; line-height: 1;
+}
+main h2 span { color: var(--dim); }
+main h3 { font-size: 1.25rem; margin: 36px 0 12px; }
+main p, main ul, main ol, main pre, main table { margin-bottom: 16px; }
+main p, main li { max-width: 68ch; }
+main ul, main ol { padding-left: 1.4em; }
+main li + li { margin-top: 6px; }
 main li pre { margin: 10px 0 12px; }
-a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+main a, .lines a { text-decoration-thickness: 2px; text-underline-offset: 3px; }
+main a:hover, .lines a:hover { color: var(--accent); }
 code {
-  font: 0.87em/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  background: var(--soft); padding: 0.12em 0.38em; border-radius: 4px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.84em;
+  background: var(--soft); padding: 0.12em 0.4em;
   font-variant-ligatures: none; /* keeps the two hyphens of --ltr apart */
 }
-a code { color: inherit; }
-pre {
-  background: var(--soft); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0;
-  padding: 14px 18px; overflow-x: auto;
-}
-pre code { background: none; padding: 0; font-size: 13px; }
+pre { max-width: 46rem; border: var(--rule) solid var(--ink); padding: 14px 18px; overflow-x: auto; line-height: 1.6; }
+pre code { background: none; padding: 0; font-size: 0.8rem; }
 /* A table is as wide as it needs to be, and scrolls sideways by itself on a narrow screen. */
-table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 15px; }
-th, td { text-align: left; vertical-align: top; padding: 9px 24px 9px 0; border-bottom: 1px solid var(--line); }
-th { font-size: 13px; font-weight: 600; color: var(--muted); }
+table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
+th, td { text-align: left; vertical-align: top; padding: 10px 28px 10px 0; border-bottom: 1px solid var(--line); }
+th { color: var(--dim); border-bottom: var(--rule) solid var(--ink); }
 th:last-child, td:last-child { padding-right: 0; }
 td:first-child { white-space: nowrap; }
-footer { margin-top: 80px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+
+footer {
+  margin-top: 88px; padding-top: 18px; border-top: var(--rule) solid var(--ink);
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 12px 24px;
+  font-size: 0.8rem; color: var(--dim);
+}
+footer a { color: var(--ink); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
 
 @media (max-width: 860px) {
-  .layout { display: block; }
-  nav { position: static; max-height: none; margin-bottom: 40px; }
-  .band .tagline { margin: 0; flex-basis: 100%; text-align: left; font-size: 17px; }
-  .band .tagline span { display: inline; }
-  .band .tagline .platform { display: block; margin-top: 6px; }
-  .band svg { width: 64px; height: 64px; }
-  .band h1 { font-size: 34px; }
+  html { font-size: 17px; }
+  :root { --pad: 16px; }
+  .page { padding-bottom: 48px; }
+  .bar nav { gap: 14px; }
+  .hero { padding-top: 26px; }
+  .lede { margin-top: 22px; }
+  .act { margin-top: 28px; }
+  .go { font-size: 1.35rem; }
+  main h2 { margin-top: 60px; }
+}
+/* On a phone a table row becomes two lines: the first cell, then the second under it. */
+@media (max-width: 600px) {
+  table { width: 100%; }
+  thead { display: none; }
+  tr { display: block; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  td { display: block; padding: 0; border: 0; }
+  td:first-child { white-space: normal; font-weight: 700; margin-bottom: 2px; }
+  td code { white-space: nowrap; }
 }
 </style>
 </head>
 <body>
-<header>
-<div class="band">
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><polygon points="0,0 100,0 100,40 0,48" fill="currentColor"/><polygon points="0,55 56.5,50.5 44.5,100 0,100" fill="currentColor"/><polygon points="63.5,49.9 100,47 100,100 51.5,100" fill="var(--accent)"/></svg>
-<div>
-<h1>Komawari</h1>
-<p class="japanese">コマ割り</p>
-</div>
-<p class="tagline"><span>Comics,</span> <span>one panel</span> <span>at a time.</span> <span class="platform">Built for the PS Vita</span></p>
-</div>
+<div class="page">
+<header class="bar">
+<a href="https://kwap.io/">kwap.io</a>
+<nav>
+<a href="https://github.com/kwap/komawari">Code</a>
+<button class="switch" id="switch" type="button" aria-label="Switch between light and dark">dark</button>
+</nav>
 </header>
-<div class="layout">
-<nav aria-label="Contents">
+<section class="hero">
+<div class="tagrow">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" aria-hidden="true"><polygon points="0,0 100,0 100,40 0,48" fill="currentColor"/><polygon points="0,55 56.5,50.5 44.5,100 0,100" fill="currentColor"/><polygon points="63.5,49.9 100,47 100,100 51.5,100" fill="#3d8fe6"/></svg>
+<h1 class="name">Komawari</h1>
+<p class="roles"><span lang="ja">コマ割り</span> · Built for the PS Vita</p>
+</div>
+<p class="lede">Comics, one panel <em>at a time.</em></p>
+<div class="act">
+<a class="go" href="#what-you-need">Start here <span aria-hidden="true">→</span></a>
+<div class="lines">
+<p>Komawari is a comic reader for the PS Vita. A whole page is too small to read on the Vita's screen, so Komawari shows one panel at a time and glides to the next.</p>
+<p>You prepare your comics on a computer, copy them to the Vita and read them there.</p>
+</div>
+</div>
+</section>
+<nav class="contents" aria-label="Contents">
 <ol>
 <li><a href="#what-you-need">What you need</a></li>
 <li><a href="#1-set-up-the-computer">1. Set up the computer</a></li>
@@ -120,15 +200,13 @@ footer { margin-top: 80px; padding-top: 20px; border-top: 1px solid var(--line);
 </ol>
 </nav>
 <main>
-<p>Read comics on the PS Vita, one panel at a time. A whole page is too small to read on the Vita's screen, so Komawari shows one panel and glides to the next.</p>
-<p>You prepare your comics on a computer, copy them to the Vita and read them there.</p>
 <h2 id="what-you-need">What you need</h2>
 <ul>
 <li>A PS Vita that runs homebrew apps, with VitaShell on it, and its USB cable.</li>
 <li>A Mac or a Linux computer.</li>
 <li>Your comics as CBZ or CBR files.</li>
 </ul>
-<h2 id="1-set-up-the-computer">1. Set up the computer</h2>
+<h2 id="1-set-up-the-computer"><span>1</span>Set up the computer</h2>
 <p>You do this once. Open the Terminal and paste each block.</p>
 <p>On Fedora or Nobara Linux only (not tried yet):</p>
 <pre><code>sudo dnf install git bsdtar
@@ -145,7 +223,7 @@ uv sync
 <p>There is now a <code>komawari</code> folder in your home folder. Every command below is run inside it. In a new Terminal window, go there first:</p>
 <pre><code>cd komawari
 </code></pre>
-<h2 id="2-prepare-your-comics">2. Prepare your comics</h2>
+<h2 id="2-prepare-your-comics"><span>2</span>Prepare your comics</h2>
 <ol>
 <li>
 <p>Copy your comic files into the <code>comics</code> folder inside the <code>komawari</code> folder.</p>
@@ -160,8 +238,8 @@ uv sync
 <p>Komawari expects manga, read right to left. For a comic read left to right, run this instead, with the name of your file:</p>
 <pre><code>uv run komawari prepare &quot;comics/My Comic.cbz&quot; --ltr --force
 </code></pre>
-<h2 id="3-copy-to-the-vita">3. Copy to the Vita</h2>
-<p>Not yet tried with a real Vita.</p>
+<h2 id="3-copy-to-the-vita"><span>3</span>Copy to the Vita</h2>
+<p>These steps have not been tried with a real Vita yet.</p>
 <ol>
 <li>
 <p>On the Vita, open VitaShell, press START and set &quot;SELECT button&quot; to &quot;USB&quot;.</p>
@@ -300,9 +378,28 @@ uv run komawari transfer
 </ul>
 <h2 id="licence">Licence</h2>
 <p>Komawari is free to use, change and share under the MIT licence; see <code>LICENSE</code>. It finds the panels with <a href="https://github.com/njean42/kumiko">Kumiko</a>, a separate program with its own licence. <code>docs/licences.md</code> lists everything Komawari uses.</p>
-<footer>This page is built from <code>README.md</code>
-by <code>uv run komawari manual</code>.</footer>
 </main>
+<footer>
+<p>This page is built from <code>README.md</code> by <code>uv run komawari manual</code>.</p>
+<a href="https://kwap.io/">kwap.io ↗</a>
+</footer>
 </div>
+<script>
+(function () {
+  var root = document.documentElement;
+  var button = document.getElementById("switch");
+  function current() {
+    return root.getAttribute("data-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  }
+  function label() { button.textContent = current() === "dark" ? "light" : "dark"; }
+  button.addEventListener("click", function () {
+    var next = current() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("theme", next); } catch (e) {}
+    label();
+  });
+  label();
+})();
+</script>
 </body>
 </html>

@@ -20,6 +20,7 @@ The reader works in a window on the computer and in the Vita3K emulator: a shelf
 
 ## Done last
 
+- The manual has the look of the owner's home page, kwap.io: heavy narrow capitals, thick rules and a switch between light and dark (2026-10-10). The look is in `src/komawari/manual.py`.
 - Published on GitHub under the MIT licence, with a build of the reader on every push and a first release.
 - `komawari install` downloads the reader from the latest release when it was not built on this computer, so the user's guide no longer asks for CMake or the Vita SDK.
 - Notes, decisions and licences cleaned for publication: no specific comics, no private computer.
@@ -104,6 +105,8 @@ The emulator:
 - `komawari install` uses `build/vita/komawari.vpk` when the reader was built on this computer. Otherwise it downloads `https://github.com/kwap/komawari/releases/latest/download/komawari.vpk` with `curl`.
 - The website is `index.html`, served by GitHub Pages from the top folder of the `main` branch. The empty file `.nojekyll` tells GitHub to serve the files as they are.
 - Its address is https://kwap.io/komawari/. The domain `kwap.io` is set on the owner's personal site project (`kwap/kwap.github.io`), and GitHub then serves the page of every other project of the account under it. Nothing in this repository sets the address. The older address, `kwap.github.io/komawari`, is sent on to the new one.
+- The page's two fonts are files in `fonts/`, with their licence texts. Bricolage Grotesque is a subset made with fontTools (`pyftsubset`: Latin letters, weights 500 to 800). IBM Plex Mono is IBM's own file, unchanged, because its licence reserves the name; see `docs/licences.md`.
+- Safari refuses some things for a page opened as a local file that it allows on a website. On the owner's home page a `<link rel="preload">` line for a font made that font fail this way. The manual has no such line. Look at the page in Safari itself, not only in a preview.
 
 ## On the Vita: what the user's guide leaves out
 

@@ -1,6 +1,6 @@
 # Komawari
 
-Read comics on the PS Vita, one panel at a time. A whole page is too small to read on the Vita's screen, so Komawari shows one panel and glides to the next.
+Komawari is a comic reader for the PS Vita. A whole page is too small to read on the Vita's screen, so Komawari shows one panel at a time and glides to the next.
 
 You prepare your comics on a computer, copy them to the Vita and read them there.
 
@@ -61,7 +61,7 @@ uv run komawari prepare "comics/My Comic.cbz" --ltr --force
 
 ## 3. Copy to the Vita
 
-Not yet tried with a real Vita.
+These steps have not been tried with a real Vita yet.
 
 1. On the Vita, open VitaShell, press START and set "SELECT button" to "USB".
 2. Connect the Vita to the computer with the cable and press SELECT.

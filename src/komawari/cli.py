@@ -27,7 +27,7 @@ from komawari.archive import (
     newest_archive,
     stated_reading_direction,
 )
-from komawari.artwork import NAME_FONT, preview, write_artwork
+from komawari.artwork import preview, write_artwork
 from komawari.book import Book, load_book, save_book, without_false_panels
 from komawari.kumiko_runner import run_kumiko
 from komawari.manual import build_manual
@@ -382,7 +382,5 @@ def draw_artwork() -> None:
 
 
 def write_manual() -> None:
-    # The page sits in the top folder, so the path to the font from here is also the path from the page.
-    name_font = ARTWORK_FONTS_DIR / NAME_FONT
-    MANUAL_PAGE.write_text(build_manual(MANUAL_SOURCE, name_font.as_posix()), encoding="utf-8")
+    MANUAL_PAGE.write_text(build_manual(MANUAL_SOURCE), encoding="utf-8")
     print(f"Wrote {MANUAL_PAGE} from {MANUAL_SOURCE}. Open it in a browser.")

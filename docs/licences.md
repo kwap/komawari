@@ -38,6 +38,17 @@ Licences as GitHub reports them for each repository, read on 2026-10-09.
 | Vita3K (emulator, for testing only) | continuous build of 2026-10-08 | GPL-2.0 | https://vita3k.org |
 | `actions/checkout` and `actions/upload-artifact` (the build on GitHub; checked 2026-10-10) | v7 | MIT | https://github.com/actions |
 
+## Used by the manual
+
+The manual (`index.html`) shows its text in two fonts. They are files in `fonts/`, next to their licence texts. Checked on 2026-10-10.
+
+| Font | Version | Licence | Where |
+|---|---|---|---|
+| Bricolage Grotesque (a subset made with fontTools: Latin letters, weights 500 to 800) | from google/fonts, 2026-10-10 | SIL Open Font License 1.1, no reserved font name | https://github.com/ateliertriay/bricolage |
+| IBM Plex Mono Medium (IBM's own WOFF2 file, unchanged) | from IBM/plex, 2026-10-10 | SIL Open Font License 1.1, with the reserved font name "Plex" | https://github.com/IBM/plex |
+
+Because of the reserved name, the IBM Plex file stays as IBM publishes it; a changed copy would need another name.
+
 ## What a release contains
 
 The released `komawari.vpk` is the reader as built by GitHub. It holds the reader's own code and artwork (MIT) and, linked in from the Vita SDK: SDL2 and SDL2_image, cJSON, the picture libraries that SDL2_image brings along (libpng, libjpeg-turbo, libwebp, zlib) and the SDK's C library (newlib). Kumiko is not part of a release.
