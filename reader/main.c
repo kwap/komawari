@@ -5,6 +5,7 @@
    the shelf and the reading screen (reading.h) until the user quits. */
 #include <SDL.h>
 
+#include "covers.h"
 #include "draw.h"
 #include "input.h"
 #include "library.h"
@@ -42,7 +43,7 @@ int main(int argc, char *argv[])
     /* DEFAULT_LIBRARY_DIR is set by CMakeLists.txt. */
     const char *library_dir = argc > 1 ? argv[1] : DEFAULT_LIBRARY_DIR;
 
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_SENSOR) != 0) {
         SDL_Log("SDL_Init failed: %s", SDL_GetError());
         return 1;
     }
@@ -63,6 +64,12 @@ int main(int argc, char *argv[])
         return 1;
     }
     SDL_Log("Found %d comics in %s", library.count, library_dir);
+    Covers *covers = covers_open(renderer, &library);
+    if (covers == NULL) {
+        draw_failure(renderer);
+        SDL_Quit();
+        return 1;
+    }
 
     int chosen = 0;
     /* With a single comic there is nothing to choose, so it opens straight away.
@@ -70,7 +77,7 @@ int main(int argc, char *argv[])
     int skip_shelf = library.count == 1;
     for (;;) {
         if (!skip_shelf) {
-            chosen = shelf_run(window, renderer, &library, chosen);
+            chosen = shelf_run(window, renderer, &library, covers, chosen);
             if (chosen < 0) {
                 break;
             }
@@ -81,6 +88,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    covers_close(covers);
     library_free(&library);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

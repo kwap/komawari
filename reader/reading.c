@@ -29,6 +29,7 @@ typedef struct {
     int page;       /* index into book.pages */
     int view;       /* index of the panel shown; 0 on a page without panels */
     int whole_page; /* 1 while the whole page is shown instead of one panel */
+    int turn;       /* how the Vita is held, as input_turn tells it */
 
     /* What is on screen. The picture glides from one shot to another. While
        the picture of the page being read is still loading, the page that was
@@ -90,9 +91,18 @@ static Shot shot_now(const Reading *reading, Uint32 now)
     return shot_between(reading->glide_from, reading->glide_to, glided);
 }
 
+/* Does this page turn when the Vita is held upright? A tall page that is only
+   ever shown whole does: upright, it fills the screen instead of a strip of it. */
+static int turns_with_vita(const Page *page)
+{
+    return page->panel_count == 0 && page->height > page->width;
+}
+
 static Shot shot_wanted(const Reading *reading)
 {
-    return shot_of_view(current_page(reading), reading->view, reading->whole_page);
+    const Page *page = current_page(reading);
+    int turned = turns_with_vita(page) ? reading->turn : 0;
+    return shot_of_view(page, reading->view, reading->whole_page, turned);
 }
 
 /* Starts the timing of a step. now is when the step was asked for. */
@@ -183,6 +193,35 @@ static int something_is_moving(const Reading *reading, Uint32 now)
            motion_running(reading->marks_start, MARKS_MS, now);
 }
 
+/* Where a rectangle of the upright screen lies on the real one. turn says
+   which end of the Vita is up: 1 the right end, -1 the left. */
+static SDL_FRect on_real_screen(SDL_FRect upright, int turn)
+{
+    if (turn > 0) {
+        /* The top of the upright screen is the right edge of the real one. */
+        return (SDL_FRect){SCREEN_WIDTH - (upright.y + upright.h), upright.x, upright.h, upright.w};
+    }
+    return (SDL_FRect){upright.y, SCREEN_HEIGHT - (upright.x + upright.w), upright.h, upright.w};
+}
+
+/* A touch on the real screen, as the upright screen sees it. */
+static Input on_upright_screen(Input touch, int turn)
+{
+    Input upright = touch;
+    if (turn > 0) {
+        upright.x = touch.y;
+        upright.y = SCREEN_WIDTH - touch.x;
+        upright.dx = touch.dy;
+        upright.dy = -touch.dx;
+    } else {
+        upright.x = SCREEN_HEIGHT - touch.y;
+        upright.y = touch.x;
+        upright.dx = -touch.dy;
+        upright.dy = touch.dx;
+    }
+    return upright;
+}
+
 /* The page on screen, with everything outside the lit part dimmed. */
 static void draw_page(const Reading *reading, Shot shot)
 {
@@ -191,12 +230,28 @@ static void draw_page(const Reading *reading, Shot shot)
     }
     const Page *page = &reading->book.pages[reading->shown_page];
     SDL_FRect whole = {0, 0, (float)page->width, (float)page->height};
+    SDL_FRect on_screen = shot_on_screen(shot, whole);
+    SDL_FRect lit = shot_on_screen(shot, shot.lit);
 
-    if (reading->shown_picture != NULL) {
-        SDL_FRect on_screen = shot_on_screen(shot, whole);
-        SDL_RenderCopyF(reading->renderer, reading->shown_picture, NULL, &on_screen);
+    if (shot.turned == 0) {
+        if (reading->shown_picture != NULL) {
+            SDL_RenderCopyF(reading->renderer, reading->shown_picture, NULL, &on_screen);
+        }
+    } else {
+        SDL_FRect turned = on_real_screen(on_screen, shot.turned);
+        if (reading->shown_picture != NULL) {
+            /* SDL turns a picture about the middle of the place it is given.
+               So the place has the picture's upright shape, and its middle is
+               where the middle of the turned picture belongs. */
+            SDL_FRect place = {turned.x + (turned.w - on_screen.w) / 2,
+                               turned.y + (turned.h - on_screen.h) / 2, on_screen.w, on_screen.h};
+            double quarter = shot.turned > 0 ? 90 : -90; /* clockwise */
+            SDL_RenderCopyExF(reading->renderer, reading->shown_picture, NULL, &place, quarter,
+                              NULL, SDL_FLIP_NONE);
+        }
+        lit = on_real_screen(lit, shot.turned);
     }
-    draw_dim_outside(reading->renderer, shot_on_screen(shot, shot.lit), (Uint8)shot.dim);
+    draw_dim_outside(reading->renderer, lit, (Uint8)shot.dim);
 }
 
 /* The position marks: a bar for the place in the comic and one square per
@@ -240,11 +295,28 @@ static void touch_picture(Reading *reading, Input input)
         return;
     }
     Shot shot = shot_now(reading, SDL_GetTicks());
+    if (shot.turned != 0) {
+        input = on_upright_screen(input, shot.turned);
+    }
     shot = shot_touched(shot, &reading->book.pages[reading->shown_page], input.x, input.y, input.dx,
                         input.dy, input.spread);
     reading->glide_from = shot;
     reading->glide_to = shot;
     reading->glide_start = 0;
+}
+
+/* The Vita was turned upright, or back. A page that turns with it is framed
+   anew and fades in. */
+static void turn_picture(Reading *reading)
+{
+    reading->turn = input_turn();
+    if (waiting_for_page(reading) || !turns_with_vita(current_page(reading))) {
+        return;
+    }
+    reading->glide_from = shot_wanted(reading);
+    reading->glide_to = reading->glide_from;
+    reading->glide_start = 0;
+    reading->fade_start = SDL_GetTicks();
 }
 
 /* On a desktop the window title tells where the reader is. */
@@ -310,6 +382,7 @@ ReadingEnd reading_run(SDL_Window *window, SDL_Renderer *renderer, const char *c
         return READING_ENDED_BACK;
     }
     reading.shown_page = -1;
+    reading.turn = input_turn();
     ask_for_page(&reading, SDL_GetTicks());
     update_window_title(&reading);
 
@@ -339,7 +412,9 @@ ReadingEnd reading_run(SDL_Window *window, SDL_Renderer *renderer, const char *c
             end = READING_ENDED_QUIT;
             break;
         }
-        if (input.action == ACTION_DRAG || input.action == ACTION_PINCH) {
+        if (input.action == ACTION_TURN) {
+            turn_picture(&reading);
+        } else if (input.action == ACTION_DRAG || input.action == ACTION_PINCH) {
             touch_picture(&reading, input);
         } else if (input.action == ACTION_TAP && !waiting_for_page(&reading)) {
             /* Back to the panel as the reader frames it. */

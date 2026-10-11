@@ -11,10 +11,21 @@
    after a few moves and the whole picture can be looked at. */
 #define DIM_LOST_PER_TOUCH 25.0f
 
-/* The smallest rectangle with the screen's shape that contains area, centred on it. */
-static SDL_FRect fit_screen(SDL_FRect area)
+/* The screen's width and height as a shot sees them: swapped for the upright screen. */
+static float screen_width(int turned)
 {
-    const float screen_shape = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+    return turned ? SCREEN_HEIGHT : SCREEN_WIDTH;
+}
+
+static float screen_height(int turned)
+{
+    return turned ? SCREEN_WIDTH : SCREEN_HEIGHT;
+}
+
+/* The smallest rectangle with the screen's shape that contains area, centred on it. */
+static SDL_FRect fit_screen(SDL_FRect area, int turned)
+{
+    const float screen_shape = screen_width(turned) / screen_height(turned);
     SDL_FRect view = area;
     if (area.w / area.h > screen_shape) {
         /* Wider than the screen: add room above and below. */
@@ -28,17 +39,18 @@ static SDL_FRect fit_screen(SDL_FRect area)
     return view;
 }
 
-Shot shot_of_view(const Page *page, int view, int whole_page)
+Shot shot_of_view(const Page *page, int view, int whole_page, int turned)
 {
     SDL_FRect whole = {0, 0, (float)page->width, (float)page->height};
     Shot shot;
+    shot.turned = turned;
     shot.lit = whole;
     if (page->panel_count > 0) {
         const Panel *panel = &page->panels[view];
         shot.lit = (SDL_FRect){(float)panel->x, (float)panel->y, (float)panel->width,
                                (float)panel->height};
     }
-    shot.view = fit_screen(whole_page ? whole : shot.lit);
+    shot.view = fit_screen(whole_page ? whole : shot.lit, turned);
     shot.dim = whole_page ? DIM_ON_WHOLE_PAGE : DIM_AROUND_PANEL;
     return shot;
 }
@@ -60,13 +72,14 @@ Shot shot_between(Shot a, Shot b, float t)
     shot.view = rect_between(a.view, b.view, t);
     shot.lit = rect_between(a.lit, b.lit, t);
     shot.dim = between(a.dim, b.dim, t);
+    shot.turned = b.turned;
     return shot;
 }
 
 SDL_FRect shot_on_screen(Shot shot, SDL_FRect page_area)
 {
     /* Screen pixels per page pixel. */
-    float scale = (float)SCREEN_WIDTH / shot.view.w;
+    float scale = screen_width(shot.turned) / shot.view.w;
     return (SDL_FRect){(page_area.x - shot.view.x) * scale, (page_area.y - shot.view.y) * scale,
                        page_area.w * scale, page_area.h * scale};
 }
@@ -94,17 +107,17 @@ Shot shot_touched(Shot shot, const Page *page, float x, float y, float dx, float
     SDL_FRect whole = {0, 0, (float)page->width, (float)page->height};
     SDL_FRect before = shot.view;
     /* The point of the page that was under the fingers before they moved. */
-    float page_per_screen = shot.view.w / SCREEN_WIDTH;
+    float page_per_screen = shot.view.w / screen_width(shot.turned);
     float held_x = shot.view.x + (x - dx) * page_per_screen;
     float held_y = shot.view.y + (y - dy) * page_per_screen;
 
-    float widest = fit_screen(whole).w;
-    float narrowest = SDL_min(SCREEN_WIDTH / CLOSEST_ZOOM, widest);
+    float widest = fit_screen(whole, shot.turned).w;
+    float narrowest = SDL_min(screen_width(shot.turned) / CLOSEST_ZOOM, widest);
     shot.view.w = SDL_clamp(shot.view.w / spread, narrowest, widest);
-    shot.view.h = shot.view.w * SCREEN_HEIGHT / SCREEN_WIDTH;
+    shot.view.h = shot.view.w * screen_height(shot.turned) / screen_width(shot.turned);
 
     /* Put that point under the fingers again. */
-    page_per_screen = shot.view.w / SCREEN_WIDTH;
+    page_per_screen = shot.view.w / screen_width(shot.turned);
     shot.view.x = held_x - x * page_per_screen;
     shot.view.y = held_y - y * page_per_screen;
 

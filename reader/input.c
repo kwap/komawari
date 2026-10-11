@@ -12,6 +12,20 @@
 #define WHEEL_SPREAD 1.15f
 /* The name the mouse goes by among the fingers. */
 #define MOUSE_FINGER ((SDL_FingerID) - 2)
+/* While nothing moves, the motion sensor is still looked at this often, in milliseconds. */
+#define TURN_CHECK_MS 250
+/* The Vita counts as upright when gravity pulls along the screen's long side
+   at least this many times as hard as along its short side, and the other way
+   round for the usual way of holding it. In between, at a slant, nothing
+   changes, so the picture does not flip to and fro. */
+#define TURN_CLEAR_RATIO 2.0f
+/* Gravity must also pull along that side at least this hard, in metres per
+   second squared; its full pull is 9.8. Lying flat, the Vita feels it along
+   neither side, and the picture stays as it is. */
+#define TURN_MIN_PULL 3.0f
+/* Which way the sensor counts along the long side: 1 if it reads a positive
+   number when the Vita's right end is up, -1 if a negative one. */
+#define TURN_SENSOR_SIGN 1
 
 /* A finger on the screen. Two are followed; any more are ignored. */
 typedef struct {
@@ -27,6 +41,9 @@ static Uint32 touch_start;
 static float touch_travel; /* how far the fingers have moved, in pixels */
 static int touch_moved;    /* 1 once it can no longer be a tap */
 
+static SDL_Sensor *motion_sensor; /* NULL where there is none, as on a desktop */
+static int turn;                  /* how the Vita is held; see input_turn */
+
 void input_open(void)
 {
     /* The Vita's buttons arrive through SDL's game controller interface. */
@@ -35,6 +52,49 @@ void input_open(void)
     }
     /* SDL also reports every touch as a mouse click. One report is enough. */
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+
+    for (int i = 0; i < SDL_NumSensors(); i++) {
+        if (SDL_SensorGetDeviceType(i) == SDL_SENSOR_ACCEL) {
+            motion_sensor = SDL_SensorOpen(i);
+            break;
+        }
+    }
+    /* The sensor reports many times a second. Those reports are not wanted as
+       events, which would keep the reader awake; it is asked when needed. */
+    SDL_EventState(SDL_SENSORUPDATE, SDL_IGNORE);
+}
+
+int input_turn(void)
+{
+    return turn;
+}
+
+/* Asks the motion sensor how the Vita is held now. Returns 1 if that changed. */
+static int turn_changed(void)
+{
+    float pull[3];
+    if (motion_sensor == NULL || SDL_SensorGetData(motion_sensor, pull, 3) != 0) {
+        return 0;
+    }
+    float along_long_side = SDL_fabsf(pull[0]);
+    float along_short_side = SDL_fabsf(pull[1]);
+    int now = turn;
+    if (along_long_side > TURN_MIN_PULL && along_long_side > TURN_CLEAR_RATIO * along_short_side) {
+        now = (pull[0] > 0 ? 1 : -1) * TURN_SENSOR_SIGN;
+    } else if (along_short_side > TURN_MIN_PULL &&
+               along_short_side > TURN_CLEAR_RATIO * along_long_side) {
+        now = 0;
+    }
+    if (now == turn) {
+        return 0;
+    }
+    SDL_Log("The Vita is held %s: the sensor reads %.1f, %.1f, %.1f",
+            now == 0  ? "the usual way"
+            : now > 0 ? "upright, right end up"
+                      : "upright, left end up",
+            pull[0], pull[1], pull[2]);
+    turn = now;
+    return 1;
 }
 
 static Action action_for_key(SDL_Keycode key)
@@ -86,6 +146,13 @@ static Input plain(Action action)
 {
     Input input = {action, 0, 0, 0, 0, 1};
     return input;
+}
+
+/* The Tab key, in a desktop window: as if the Vita were turned on by a quarter. */
+static Input pretend_turn(void)
+{
+    turn = turn == 0 ? 1 : turn == 1 ? -1 : 0;
+    return plain(ACTION_TURN);
 }
 
 static Finger *find_finger(SDL_FingerID id)
@@ -204,8 +271,19 @@ static Input input_for_wheel(int notches)
 
 Input input_next(int something_is_moving)
 {
+    if (turn_changed()) {
+        return plain(ACTION_TURN);
+    }
     SDL_Event event;
-    int got_event = something_is_moving ? SDL_PollEvent(&event) : SDL_WaitEvent(&event);
+    int got_event;
+    if (something_is_moving) {
+        got_event = SDL_PollEvent(&event);
+    } else if (motion_sensor != NULL) {
+        /* Wake up now and then to look at the motion sensor. */
+        got_event = SDL_WaitEventTimeout(&event, TURN_CHECK_MS);
+    } else {
+        got_event = SDL_WaitEvent(&event);
+    }
     if (!got_event) {
         return plain(ACTION_NONE);
     }
@@ -213,6 +291,9 @@ Input input_next(int something_is_moving)
     case SDL_QUIT:
         return plain(ACTION_QUIT);
     case SDL_KEYDOWN:
+        if (event.key.keysym.sym == SDLK_TAB) {
+            return pretend_turn();
+        }
         return plain(action_for_key(event.key.keysym.sym));
     case SDL_CONTROLLERBUTTONDOWN:
         return plain(action_for_button(event.cbutton.button));

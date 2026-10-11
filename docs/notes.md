@@ -20,6 +20,9 @@ The reader works in a window on the computer, in the Vita3K emulator and on a re
 
 ## Done last
 
+- The shelf loads its covers in the background and keeps them between visits (2026-10-11, `reader/covers.c`). Tried only in the desktop build.
+- More comics prepared and copied to the Vita over FTP (2026-10-11), 17 in all now, 5.0 GB: digital manga volumes, scanned manga volumes, a single issue and an omnibus of western comics. Every file on the Vita was checked against its size here. None of the new ones has been opened on the Vita yet. Their archives showed four things `prepare` could not handle, now fixed in `src/komawari/archive.py` and `src/komawari/pages.py`: brackets in file names, pages inside a folder, first pages listed last, and page numbers written in other ways. See "What preparing a comic gives".
+- A tall page shown whole turns with the Vita (2026-10-11): held upright, it fills the screen. `reader/input.c` reads the motion sensor; `reader/shot.c` frames the page for the upright screen; `reader/reading.c` draws it turned. Tried only in the desktop build, where the Tab key stands in for turning the Vita. Not committed yet.
 - Wide and colour pages are at 80% instead of 70% (2026-10-11, owner's choice), and the name on the page behind the bubble sits lower, clear of the Vita's own icons. Both are on the Vita; neither has been looked at there yet.
 - Colour pages (2026-10-11): the reader converts colour pictures to 16-bit colour itself, and `prepare` makes colour pages 70% like the wide pictures. Tried on the Vita by the owner at 70%: fast, sharp enough, no complaints.
 - Wide pictures are made at 70% (2026-10-11), after a size test on the Vita (see "What preparing a comic gives"). The three volumes were prepared again.
@@ -113,6 +116,25 @@ Built on 2026-10-11 and used on the Vita by the owner, who zoomed into pages wit
 - Numbers that may need tuning, all at the top of their files: how far a finger may wander in a tap and how long a tap may last (`reader/input.c`), how short a swipe still moves a cover (`reader/shelf.c`), the closest zoom and how fast the dimming goes (`reader/shot.c`).
 - Not built: turning the page by touch, and a flick that carries the covers further than one.
 
+### 4. Tall pages turn with the Vita
+
+Built on 2026-10-11, tried only in the desktop build. To check on the Vita:
+
+- Which way up. The sensor's sign along the screen's long side is a guess (`TURN_SENSOR_SIGN` in `reader/input.c`). If a page comes out upside down when the Vita is held upright, change it to -1. Each change of holding writes a line with the sensor's three numbers to the log.
+- How readily it turns (`TURN_CLEAR_RATIO` and `TURN_MIN_PULL`), also when the Vita is held nearly flat.
+- The buttons do not turn: D-pad right is still the next page. The marks at the bottom stay along the screen's long side.
+- With a sensor, the reader wakes four times a second to look at it while nothing moves (`TURN_CHECK_MS`). Without one, as on a desktop, it sleeps until something happens.
+- Not built: turning the whole-page view of a page with panels, and a turning movement; the page fades in turned.
+
+### 5. The shelf with many comics
+
+Built on 2026-10-11, tried only in the desktop build with 17 comics.
+
+- `reader/covers.c` loads the covers and title pictures on a thread of its own, nearest the middle of the shelf first, and keeps them while a comic is read. The shelf shows a grey box for a cover that is not there yet.
+- It holds the pictures of at most 25 comics, about 18 MB of graphics memory: those around the middle. Moving along a longer shelf lets go of the far ones and loads new ones.
+- To time on the Vita: the log's "Shelf: N pictures loaded in ... ms" line. Loading used to take about 0.13 s per cover and 0.015 s per title, so 17 comics should be complete after about 2.5 seconds, with the three covers in view there after about half a second.
+- Not tried: a shelf of more than 25 comics. The row of squares at the bottom grows 16 pixels wider per comic and leaves the screen at about 60.
+
 ### Also open
 
 - `install`, `transfer`, `list` and `remove` against a real card. Either put the microSD card straight into the computer, which is also much faster than FTP, or use USB mode with a cable that carries data.
@@ -129,7 +151,8 @@ Built on 2026-10-11 and used on the Vita by the owner, who zoomed into pages wit
 - A comic that opens with its whole dust jacket shows that first, then the front cover. Blank pages are still shown.
 - Slanted panel borders give overlapping or short rectangles; the dimmed surroundings soften this.
 - No correction step exists. Kumiko's errors are in `panels.json` as they are.
-- The rule for covers and extras assumes page files whose names end in a page number. A comic named differently would have every page shown whole.
+- The rule for covers and extras reads the page number from the file name (`src/komawari/pages.py`). It knows the ways of naming met so far; a comic named in yet another way would have every page shown whole.
+- A comic read left to right must be prepared with `--ltr`, unless its `ComicInfo.xml` says so. The western archives met so far have that file but leave the direction out, so `prepare` assumed right to left.
 - The reader ignores `reading_direction`: Right is always "next". A left-to-right comic has its panels in the right order, but nothing else changes.
 - Reading the direction from `ComicInfo.xml` was only tried on small archives made for the test.
 
@@ -171,6 +194,7 @@ VITASDK=~/vitasdk ~/vitasdk/bin/vdpm install sdl2 sdl2_image
 - The build finds the SDK through the `VITASDK` variable, or else in `~/vitasdk`. The SDK's own default, `/usr/local/vitasdk`, needs administrator rights.
 - Keys in the window: Left and Right, Space or Enter, Up for the whole page, Backspace to go back to the shelf, Escape to quit.
 - The mouse stands in for a finger in the window: drag with the left button, click for a tap, and the wheel for spreading and pinching two fingers.
+- The Tab key stands in for turning the Vita: upright with the right end up, upright with the left end up, back to the usual way.
 - With one comic the reader opens it at once; the shelf shows only with several comics or after going back.
 - If no comic is found, or a comic cannot be read, the screen turns red for four seconds.
 - On the Vita, SDL writes its log to `ux0:data/SDL_Log.txt`. It adds to the file and never empties it, and it opens and closes the file for every line.
@@ -209,8 +233,11 @@ The emulator:
 - Copying over Wi-Fi instead of USB: in VitaShell press START, set "SELECT button" to "FTP" and press SELECT. VitaShell shows an address like `ftp://192.168.1.20:1337`. With an FTP program, copy the comic folders into `ux0:/data/komawari/` and `komawari.vpk` into `ux0:/data/`.
 - Copying over FTP was tried on a real Vita (2026-10-10): three volumes, 1.9 GB, at about 1.3 MB per second, so roughly 8 minutes per volume. Every file arrived with the right size.
 - VitaShell's FTP server (it answers as FTPVita) shows the card as `/ux0:/`. It has no `NLST` command. `lftp` asks for that when the listing of a folder comes back empty, and then gives up; `set ftp:list-empty-ok yes` avoids it. `curl -T` works as it is.
+- `curl -T` reads brackets in the name of the file to send as a range to step through. `-g` switches that off; file names with brackets are common in comic archives.
+- One `curl` call can send many files, as pairs of `-T FILE URL`, and keeps one connection open for all of them. That copied at about 1 MB per second, against 0.6 with one call per file of about 1 MB.
 - The same server lists nothing when `LIST` is given a folder's path, without reporting an error. Step into the folder first (`CWD`), then send `LIST` alone; `curl` and `lftp` do that by themselves, Python's `ftplib` does not. An empty listing can look like a failed copy.
 - While the FTP server runs, the Vita's screen turns off after a while but the Vita does not go to sleep, and a copy carries on.
+- A copy breaks when the computer or the Vita moves to another Wi-Fi network in the middle of it, and VitaShell's server can then hang: it takes a connection and says nothing. Closing VitaShell and starting it again clears that. Keep both on one network until the copy is done.
 - When copying by hand, send `panels.json` last, as `komawari transfer` does: the reader lists a folder as soon as that file is in it.
 - USB mode: on the first try with a real Vita, the computer saw no USB device at all. The cause was not found; a cable that only charges is the usual one.
 - VitaShell's START menu has a "USB device" setting. With the card in an SD2Vita adapter it should be `sd2vita`; "Memory Card" offers the Vita's own memory instead. This is from VitaShell's change log and forum threads, not tried.
@@ -231,6 +258,18 @@ Measured on three manga volumes of 409 to 449 pages, scanned at 4130 x 5960 pixe
 - How the size was chosen: a test comic of six heavy pictures of one volume (the dust jacket, a wide colour picture, three colour spreads, one of them with panels, and a grey spread with panels), each at 100, 80, 70, 50 and 35% of its size, with the number stamped in the corner. A throwaway script made it; it is not in the repository. The owner looked at them on the Vita, zoomed in: 70% is good for all, 50% workable for pictures without text. After reading whole volumes at 70%, the owner asked for 80%.
 - Loading times from that test's log, for four colour pictures that took 3.0 to 3.1 s at 100%: 2.0 to 2.1 s at 80%, 1.5 s at 70%, 0.8 s at 50% and 0.4 s at 35%. The time follows the number of pixels closely. The grey spread was not reached in the test; at full size it took 2.5 s, and the estimate for 70% is 1.3 s.
 - The new pages and `panels.json` files were copied to the Vita over FTP and every page's size checked there; the test comic was removed. The new sizes have not been looked at on the Vita as part of the real volumes yet.
+- Other kinds of archive, prepared on 2026-10-11:
+  - Digital manga volumes: 160 to 208 pages of 1725 x 2475, grey PNG files, with spreads of 3450 x 2475. They are smaller than the Vita's page, so nothing is shrunk. About 180 MB per volume for the Vita, a minute or two to prepare.
+  - A single western issue: 42 colour pages of 2650 x 4075 as WebP, which become 1665 x 2560. 130 panels, 33 MB.
+  - A western omnibus: 344 colour pages of 1988 x 3056.
+  - Scanned manga volumes: about 240 pages of 1500 x 2200, some as small as 750 x 1108.
+  - None of these comes from a scan twice the size of the Vita's page, so their wide and colour pages stay at full size.
+- What those archives needed:
+  - File names with brackets, such as `... [Digital].png`. `bsdtar` reads a name as a pattern, so `extract` puts a backslash before `[ ] * ?`.
+  - Pages inside a folder in the archive. `extract` moves them up, so every page lies in `pages/` under its bare name.
+  - An archive that lists its first two pages last. When every file name holds a page number, the numbers give the order.
+  - Page numbers written as `p045`, as `p018-p019`, in front of notes in brackets, or after an issue number (`001-018`).
+  - A cover numbered 0, which is now shown whole like a cover without a number.
 - Preparing again without looking for panels: delete or move `for_vita/NAME` and run `prepare`. The full-size `panels.json` in `books/NAME` is kept, so only extracting and resizing run, about a minute per volume.
 - Panels: 2,100 to 2,300 in each of the two volumes counted. Most pages have 5 to 7.
 - Shown whole: 27 to 44 pages per volume (covers, extras, title and text pages, pages with a single panel).
@@ -276,6 +315,7 @@ Kumiko was chosen: an open licence, adjustable, and it keeps sound effects that 
 ### The Vita
 
 - SDL2's Vita renderer limits textures to 4096 x 4096.
+- SDL2 on the Vita (2.32.8) has the motion sensor as two SDL sensors, an accelerometer and a gyroscope, once `SDL_INIT_SENSOR` is started. The accelerometer gives three numbers in metres per second squared, along the Vita's own axes. SDL sends an event for every reading unless `SDL_SENSORUPDATE` events are switched off; `SDL_SensorGetData` gives the latest reading either way.
 - SDL2 on the Vita (2.32.8) reports the front screen as touch device 1, of the kind "direct", and the rear pad as device 2, of the kind "indirect". A finger's place comes as a share of the screen, 0 to 1. SDL also sends every touch again as a mouse click unless the hint `SDL_HINT_TOUCH_MOUSE_EVENTS` is "0".
 - The Vita SDK has release channels (`vdpm channels`): `2026.08` is the supported one, with a toolchain of 2026-08-25, and `nightly` is rebuilt continuously. Installing without naming a channel gives the newest supported one. `vdpm status` tells what an installation follows.
 - SDL2's Vita renderer offers the pixel formats ABGR8888, ARGB8888, RGB565 and BGR565. `SDL_CreateTextureFromSurface` (SDL 2.32.8) picks RGB565 for a picture without transparency in any other format, which is what a decoded JPEG is. Seen in the log on the device.

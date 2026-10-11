@@ -3,7 +3,7 @@
 #include "draw.h"
 #include "input.h"
 #include "motion.h"
-#include "picture.h"
+#include "covers.h"
 #include "screen.h"
 
 /* How long the covers slide when another comic is chosen, in milliseconds. */
@@ -42,8 +42,7 @@
 typedef struct {
     SDL_Renderer *renderer;
     const Library *library;
-    SDL_Texture **covers; /* one per comic; NULL where cover.jpg is missing */
-    SDL_Texture **titles; /* one per comic; NULL where title.png is missing */
+    Covers *covers; /* every comic's cover and title picture, as far as they are loaded */
 
     /* The covers sit in a row, one place apart. A position says which place is
        in the middle of the screen; between two covers it is a fraction. In a
@@ -59,40 +58,6 @@ typedef struct {
     float drag_from;   /* the position when the drag began */
     float drag_pixels; /* how far the finger has gone; to the right counts as positive */
 } Shelf;
-
-/* Loads every comic's cover and the picture of its title. */
-static void load_pictures(Shelf *shelf)
-{
-    int count = shelf->library->count;
-    shelf->covers = SDL_calloc(count, sizeof(SDL_Texture *));
-    shelf->titles = SDL_calloc(count, sizeof(SDL_Texture *));
-    if (shelf->covers == NULL || shelf->titles == NULL) {
-        return;
-    }
-    Uint32 start = SDL_GetTicks();
-    for (int i = 0; i < count; i++) {
-        char path[1024];
-        SDL_snprintf(path, sizeof(path), "%s/cover.jpg", shelf->library->comic_dirs[i]);
-        shelf->covers[i] = picture_load(shelf->renderer, path);
-        SDL_snprintf(path, sizeof(path), "%s/title.png", shelf->library->comic_dirs[i]);
-        shelf->titles[i] = picture_load(shelf->renderer, path);
-    }
-    SDL_Log("Shelf: the pictures of %d comics loaded in %u ms", count, SDL_GetTicks() - start);
-}
-
-static void free_pictures(Shelf *shelf)
-{
-    for (int i = 0; i < shelf->library->count; i++) {
-        if (shelf->covers != NULL) {
-            SDL_DestroyTexture(shelf->covers[i]);
-        }
-        if (shelf->titles != NULL) {
-            SDL_DestroyTexture(shelf->titles[i]);
-        }
-    }
-    SDL_free(shelf->covers);
-    SDL_free(shelf->titles);
-}
 
 static int is_ring(const Shelf *shelf)
 {
@@ -129,6 +94,7 @@ static void slide_to_place(Shelf *shelf, int place)
     shelf->slide_start = now;
     shelf->dragging = 0;
     shelf->chosen = comic_at(shelf, place);
+    covers_want(shelf->covers, shelf->chosen);
 
     /* After many turns round a ring the numbers would grow without end, so
        whole turns are taken off again. */
@@ -152,7 +118,7 @@ static SDL_FRect cover_area(const Shelf *shelf, int comic, float places_away)
     float scale = NEIGHBOUR_SCALE + (1 - NEIGHBOUR_SCALE) * nearness;
 
     float shape = MISSING_COVER_SHAPE;
-    SDL_Texture *cover = shelf->covers != NULL ? shelf->covers[comic] : NULL;
+    SDL_Texture *cover = covers_cover(shelf->covers, comic);
     int picture_width, picture_height;
     if (cover != NULL &&
         SDL_QueryTexture(cover, NULL, NULL, &picture_width, &picture_height) == 0) {
@@ -171,7 +137,7 @@ static void draw_cover(const Shelf *shelf, int comic, float places_away)
 {
     SDL_FRect area = cover_area(shelf, comic, places_away);
     float nearness = 1 - SDL_min(SDL_fabsf(places_away), 1.0f);
-    SDL_Texture *cover = shelf->covers != NULL ? shelf->covers[comic] : NULL;
+    SDL_Texture *cover = covers_cover(shelf->covers, comic);
 
     if (cover != NULL) {
         SDL_RenderCopyF(shelf->renderer, cover, NULL, &area);
@@ -186,11 +152,10 @@ static void draw_cover(const Shelf *shelf, int comic, float places_away)
 static void draw_title(const Shelf *shelf, float position)
 {
     int place = (int)SDL_floorf(position + 0.5f);
-    if (shelf->titles == NULL ||
-        (!is_ring(shelf) && (place < 0 || place >= shelf->library->count))) {
+    if (!is_ring(shelf) && (place < 0 || place >= shelf->library->count)) {
         return;
     }
-    SDL_Texture *title = shelf->titles[comic_at(shelf, place)];
+    SDL_Texture *title = covers_title(shelf->covers, comic_at(shelf, place));
     int width, height;
     if (title == NULL || SDL_QueryTexture(title, NULL, NULL, &width, &height) != 0) {
         return;
@@ -289,7 +254,8 @@ static int tap(Shelf *shelf, float x, float y)
     return 0;
 }
 
-int shelf_run(SDL_Window *window, SDL_Renderer *renderer, const Library *library, int chosen)
+int shelf_run(SDL_Window *window, SDL_Renderer *renderer, const Library *library, Covers *covers,
+              int chosen)
 {
     Shelf shelf = {0};
     shelf.renderer = renderer;
@@ -297,11 +263,13 @@ int shelf_run(SDL_Window *window, SDL_Renderer *renderer, const Library *library
     shelf.chosen = chosen;
     shelf.slide_from = (float)chosen;
     shelf.slide_to = (float)chosen;
-    load_pictures(&shelf);
+    shelf.covers = covers;
+    covers_want(covers, chosen);
     SDL_SetWindowTitle(window, "Komawari");
 
     int opened;
     for (;;) {
+        covers_take_loaded(covers);
         Uint32 now = SDL_GetTicks();
         draw_frame(&shelf, now);
 
@@ -324,6 +292,5 @@ int shelf_run(SDL_Window *window, SDL_Renderer *renderer, const Library *library
         }
     }
 
-    free_pictures(&shelf);
     return opened;
 }

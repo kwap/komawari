@@ -50,6 +50,7 @@ add_executable(reader
   reader/main.c      # start-up; moves between the shelf and the reading screen
   reader/library.c   # finds the comics, one folder each
   reader/shelf.c     # the screen for choosing a comic
+  reader/covers.c    # loads the shelf's covers in the background and keeps them
   reader/reading.c   # the screen for reading one, panel by panel
   reader/book.c      # reads a comic's panels.json
   reader/file.c      # reads a whole file from the memory card

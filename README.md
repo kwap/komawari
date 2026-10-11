@@ -105,6 +105,8 @@ To add comics later, repeat part 2 and steps 1 to 4. Step 5 is only needed once.
 
 With only one comic on the Vita, it opens straight away. With three or more, the covers go round: after the last comic comes the first again.
 
+A tall page that is shown whole, such as a cover, is small on the Vita's wide screen. Hold the Vita upright, like a book, and the page turns with it and fills the screen.
+
 ## Commands
 
 Run them in the `komawari` folder.

@@ -1,8 +1,12 @@
-/* Turns key presses, button presses and touches into the few things a user can ask for.
+/* Turns key presses, button presses, touches and the way the Vita is held
+   into the few things a user can ask for.
 
    Touches come from the Vita's front screen. In a desktop window the mouse
    stands in for them: holding the left button is one finger, and the wheel
-   spreads or pinches two fingers under the pointer. */
+   spreads or pinches two fingers under the pointer.
+
+   The Vita's motion sensor tells whether the Vita is held upright, like a
+   book. In a desktop window the Tab key stands in for turning it. */
 #ifndef KOMAWARI_INPUT_H
 #define KOMAWARI_INPUT_H
 
@@ -17,7 +21,8 @@ typedef enum {
     ACTION_TAP,     /* a short touch that stayed in one place */
     ACTION_DRAG,    /* one finger moved across the screen */
     ACTION_PINCH,   /* two fingers moved */
-    ACTION_RELEASE  /* the last finger was lifted after a drag or a pinch */
+    ACTION_RELEASE, /* the last finger was lifted after a drag or a pinch */
+    ACTION_TURN     /* the Vita was turned upright, or back; see input_turn */
 } Action;
 
 /* One thing the user did. Everything after action is for touches only.
@@ -31,8 +36,12 @@ typedef struct {
     float spread; /* pinch: the distance between the fingers, divided by what it was before */
 } Input;
 
-/* Starts listening to the Vita's buttons. Call once, after SDL_Init. */
+/* Starts listening to the Vita's buttons and its motion sensor. Call once, after SDL_Init. */
 void input_open(void);
+
+/* How the Vita is held: 0 the usual way, 1 upright with its right end up,
+   -1 upright with its left end up. */
+int input_turn(void);
 
 /* Returns the next thing the user did.
    While something on screen is moving it returns at once, with ACTION_NONE if

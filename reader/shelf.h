@@ -17,10 +17,13 @@
 
 #include <SDL.h>
 
+#include "covers.h"
 #include "library.h"
 
-/* Lets the user pick a comic, starting with the one at index chosen.
+/* Lets the user pick a comic, starting with the one at index chosen. The
+   covers appear as they are loaded; until then a comic has a grey box.
    Returns the index of the comic to open, or -1 if the user closed the reader. */
-int shelf_run(SDL_Window *window, SDL_Renderer *renderer, const Library *library, int chosen);
+int shelf_run(SDL_Window *window, SDL_Renderer *renderer, const Library *library, Covers *covers,
+              int chosen);
 
 #endif
