@@ -36,6 +36,9 @@ from komawari.artwork import (
 # Shown next to the name at the top of the page.
 PLATFORM_LINE = "Built for the PS Vita"
 
+# The look the page opens in. The switch changes it, and the visitor's choice is remembered.
+DEFAULT_THEME = "dark"
+
 # Where the links in the top bar lead.
 HOME_URL = "https://kwap.io/"
 CODE_URL = "https://github.com/kwap/komawari"
@@ -77,7 +80,7 @@ def build_manual(source: Path) -> str:
     sentence = f"{' '.join(TAGLINE_LINES[:-1])} <em>{TAGLINE_LINES[-1]}</em>"
     return f"""<!doctype html>
 <!-- Built by `komawari manual` from {source.as_posix()}. Do not change this file; change that one. -->
-<html lang="en">
+<html lang="en" data-theme="{DEFAULT_THEME}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -97,11 +100,13 @@ def build_manual(source: Path) -> str:
 </header>
 <section class="hero">
 <div class="tagrow">
-{_mark("currentColor", _hex(ACCENT))}
 <h1 class="name">{title}</h1>
 <p class="roles"><span lang="ja">{APP_NAME_JAPANESE}</span> · {PLATFORM_LINE}</p>
 </div>
+<div class="duo">
+{_mark("currentColor", _hex(ACCENT))}
 <p class="lede">{sentence}</p>
+</div>
 <div class="act">
 {start}
 <div class="lines">
@@ -191,8 +196,8 @@ def _icon() -> str:
     return picture.replace('"', "'").replace("#", "%23").replace("<", "%3C").replace(">", "%3E")
 
 
-# The page follows the system's light or dark setting until the switch is used. The choice is kept under the
-# same name as on kwap.io, so it holds across the owner's pages.
+# The page opens in its default look unless the visitor chose the other one with the switch. The choice is
+# kept under the same name as on kwap.io, so it holds across the owner's pages.
 THEME_SCRIPT = """
 try {
   var saved = localStorage.getItem("theme");
@@ -205,10 +210,7 @@ SWITCH_SCRIPT = """
 (function () {
   var root = document.documentElement;
   var button = document.getElementById("switch");
-  function current() {
-    var systemIsDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return root.getAttribute("data-theme") || (systemIsDark ? "dark" : "light");
-  }
+  function current() { return root.getAttribute("data-theme"); }
   function label() { button.textContent = current() === "dark" ? "light" : "dark"; }
   button.addEventListener("click", function () {
     var next = current() === "dark" ? "light" : "dark";
@@ -309,12 +311,6 @@ STYLE = """
   --accent: #4b2ff2; --on-accent: #ffffff;
   --rule: 3px; --edge: 18px; --pad: 28px;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #0d0d0d; --ink: #f1eee6; --dim: #a5a299; --line: #3a3934; --soft: #22211e;
-    --accent: #cdfa3c; --on-accent: #0d0d0d;
-  }
-}
 :root[data-theme="dark"] {
   --bg: #0d0d0d; --ink: #f1eee6; --dim: #a5a299; --line: #3a3934; --soft: #22211e;
   --accent: #cdfa3c; --on-accent: #0d0d0d;
@@ -324,12 +320,6 @@ STYLE = """
 :root {
   --t-bg: #e6e7ed; --t-bar: #d6d8df; --t-fg: #343b59; --t-comment: #6c6e75; --t-command: #2959aa;
   --t-keyword: #65359d; --t-option: #8f5e15; --t-string: #385f0d; --t-variable: #8c4351; --t-operator: #006c86;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --t-bg: #1a1b26; --t-bar: #16161e; --t-fg: #a9b1d6; --t-comment: #646e9c; --t-command: #7aa2f7;
-    --t-keyword: #bb9af7; --t-option: #e0af68; --t-string: #9ece6a; --t-variable: #f7768e; --t-operator: #89ddff;
-  }
 }
 :root[data-theme="dark"] {
   --t-bg: #1a1b26; --t-bar: #16161e; --t-fg: #a9b1d6; --t-comment: #646e9c; --t-command: #7aa2f7;
@@ -370,18 +360,25 @@ a { color: inherit; }
 }
 .switch:hover { background: var(--accent); color: var(--on-accent); }
 
-/* Hero: the mark and the name as a tag, the tagline as a very large sentence, then where to start.
-   cqw is 1% of the hero's width. */
+/* Hero: the name as a tag; under it the mark beside the tagline, set as a very large sentence; then where to
+   start. cqw is 1% of the hero's width. */
 .hero { container-type: inline-size; padding-top: 36px; }
 .tagrow { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 18px; }
-.tagrow svg { width: 42px; height: 42px; flex: none; }
 .name { background: var(--accent); color: var(--on-accent); font-size: 1.5rem; line-height: 1; padding: 7px 12px 8px; }
 .roles { color: var(--dim); }
+/* The mark is as tall as the letters of the two lines, and the sentence takes the rest of the width.
+   --size is the sentence's font size: the hero's width, less the gap, shared between the first line
+   (6.42 times the font size wide) and the mark (1.5 times). */
+.duo {
+  --gap: 36px; --size: min(11vw, 148px);  /* for browsers that do not know cqw */
+  display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--gap); margin-top: 30px;
+}
+@supports (width: 1cqw) { .duo { --size: min((100cqw - var(--gap)) / 8, 199px); } }
+.duo svg { display: block; width: calc(var(--size) * 1.5); height: calc(var(--size) * 1.5); }
 .lede {
-  font-size: min(13.8vw, 188px);  /* for browsers that do not know cqw */
-  font-size: min(100cqw / 6.5, 199px);  /* the first line is 6.42 times the font size wide, so it always fits */
+  font-size: var(--size);
   font-optical-sizing: none;  /* one drawing of the letters at every size, which keeps that width true */
-  line-height: 0.84; white-space: nowrap; margin-top: 30px; margin-left: -0.02em;
+  line-height: 0.84; white-space: nowrap;
 }
 .lede em { display: block; font-style: normal; color: var(--accent); }
 .act {
@@ -469,7 +466,7 @@ footer a:hover { text-decoration: underline; }
   .page { padding-bottom: 48px; }
   .bar nav { gap: 14px; }
   .hero { padding-top: 26px; }
-  .lede { margin-top: 22px; }
+  .duo { --gap: 16px; margin-top: 22px; }
   .act { margin-top: 28px; }
   .go { font-size: 1.35rem; }
   main h2 { margin-top: 60px; }

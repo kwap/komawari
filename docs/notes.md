@@ -108,6 +108,7 @@ The emulator:
 - The page's two fonts are files in `fonts/`, with their licence texts. Bricolage Grotesque is a subset made with fontTools (`pyftsubset`: Latin letters, weights 500 to 800). IBM Plex Mono is IBM's own file, unchanged, because its licence reserves the name; see `docs/licences.md`.
 - Safari refuses some things for a page opened as a local file that it allows on a website. On the owner's home page a `<link rel="preload">` line for a font made that font fail this way. The manual has no such line. Look at the page in Safari itself, not only in a preview.
 - Blocks of commands: a script in the page (`TERMINAL_SCRIPT` in `manual.py`) puts each one in a "terminal" with a copy button and colours the words in the Tokyo Night theme's colours. It reads the lines as shell commands, so another kind of code would be coloured wrongly. The same script is in the Linux Whisper page.
+- The page opens dark (`DEFAULT_THEME` in `manual.py`) whatever the system's setting; the switch changes it and the choice is remembered. The mark beside the tagline is sized together with the sentence from the hero's width (`--size` in the stylesheet).
 
 ## On the Vita: what the user's guide leaves out
 
