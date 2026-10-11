@@ -24,8 +24,11 @@
    neither side, and the picture stays as it is. */
 #define TURN_MIN_PULL 3.0f
 /* Which way the sensor counts along the long side: 1 if it reads a positive
-   number when the Vita's right end is up, -1 if a negative one. */
-#define TURN_SENSOR_SIGN 1
+   number when the Vita's right end is up, -1 if a negative one. The Vita's
+   sensor gives the direction gravity pulls in: held the usual way it reads
+   about -9 along the short side, and with the right end up a negative number
+   along the long side. */
+#define TURN_SENSOR_SIGN -1
 
 /* A finger on the screen. Two are followed; any more are ignored. */
 typedef struct {
@@ -60,8 +63,11 @@ void input_open(void)
         }
     }
     /* The sensor reports many times a second. Those reports are not wanted as
-       events, which would keep the reader awake; it is asked when needed. */
+       events, which would keep the reader awake; it is asked when needed. With
+       the events off, SDL no longer fetches the readings by itself, so
+       turn_changed tells it to. */
     SDL_EventState(SDL_SENSORUPDATE, SDL_IGNORE);
+    SDL_Log("Motion sensor: %s", motion_sensor != NULL ? "found" : "none");
 }
 
 int input_turn(void)
@@ -73,7 +79,11 @@ int input_turn(void)
 static int turn_changed(void)
 {
     float pull[3];
-    if (motion_sensor == NULL || SDL_SensorGetData(motion_sensor, pull, 3) != 0) {
+    if (motion_sensor == NULL) {
+        return 0;
+    }
+    SDL_SensorUpdate();
+    if (SDL_SensorGetData(motion_sensor, pull, 3) != 0) {
         return 0;
     }
     float along_long_side = SDL_fabsf(pull[0]);

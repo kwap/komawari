@@ -24,7 +24,7 @@ The reader works in a window on the computer, in the Vita3K emulator and on a re
 - The lettering on the page behind the bubble moved right and got a little smaller, clear of the title the Vita writes down the left edge when the PS button is pressed. Not seen on the Vita yet.
 - The shelf loads its covers in the background and keeps them between visits (2026-10-11, `reader/covers.c`). Tried only in the desktop build.
 - More comics prepared and copied to the Vita over FTP (2026-10-11), 17 in all now, 5.0 GB: digital manga volumes, scanned manga volumes, a single issue and an omnibus of western comics. Every file on the Vita was checked against its size here. None of the new ones has been opened on the Vita yet. Their archives showed four things `prepare` could not handle, now fixed in `src/komawari/archive.py` and `src/komawari/pages.py`: brackets in file names, pages inside a folder, first pages listed last, and page numbers written in other ways. See "What preparing a comic gives".
-- A tall page shown whole turns with the Vita (2026-10-11): held upright, it fills the screen. `reader/input.c` reads the motion sensor; `reader/shot.c` frames the page for the upright screen; `reader/reading.c` draws it turned. Tried only in the desktop build, where the Tab key stands in for turning the Vita. Not committed yet.
+- A tall page shown whole turns with the Vita (2026-10-11): held upright, it fills the screen. `reader/input.c` reads the motion sensor; `reader/shot.c` frames the page for the upright screen; `reader/reading.c` draws it turned. It turns on the Vita; see "Next", point 4.
 - Wide and colour pages are at 80% instead of 70% (2026-10-11, owner's choice), and the name on the page behind the bubble sits lower, clear of the Vita's own icons. Both are on the Vita; neither has been looked at there yet.
 - Colour pages (2026-10-11): the reader converts colour pictures to 16-bit colour itself, and `prepare` makes colour pages 70% like the wide pictures. Tried on the Vita by the owner at 70%: fast, sharp enough, no complaints.
 - Wide pictures are made at 70% (2026-10-11), after a size test on the Vita (see "What preparing a comic gives"). The three volumes were prepared again.
@@ -120,9 +120,14 @@ Built on 2026-10-11 and used on the Vita by the owner, who zoomed into pages wit
 
 ### 4. Tall pages turn with the Vita
 
-Built on 2026-10-11, tried only in the desktop build. To check on the Vita:
+Built on 2026-10-11 and seen working on the Vita by the owner, after two fixes:
 
-- Which way up. The sensor's sign along the screen's long side is a guess (`TURN_SENSOR_SIGN` in `reader/input.c`). If a page comes out upside down when the Vita is held upright, change it to -1. Each change of holding writes a line with the sensor's three numbers to the log.
+- The first build never turned a page: the reader had switched the sensor's events off, and SDL then stops fetching the readings (see "Facts checked"). The reader now fetches them itself.
+- The second turned the page upside down. The sensor gives the direction gravity pulls in, so with the Vita's right end up it reads a negative number along the screen's long side (`TURN_SENSOR_SIGN` in `reader/input.c` is -1). The build with that sign has not been looked at on the Vita yet.
+- The log's first lines say whether a motion sensor was found, and each change of holding writes the sensor's three numbers.
+
+Still to judge on the Vita:
+
 - How readily it turns (`TURN_CLEAR_RATIO` and `TURN_MIN_PULL`), also when the Vita is held nearly flat.
 - The buttons do not turn: D-pad right is still the next page. The marks at the bottom stay along the screen's long side.
 - With a sensor, the reader wakes four times a second to look at it while nothing moves (`TURN_CHECK_MS`). Without one, as on a desktop, it sleeps until something happens.
@@ -237,6 +242,7 @@ The emulator:
 - VitaShell's FTP server (it answers as FTPVita) shows the card as `/ux0:/`. It has no `NLST` command. `lftp` asks for that when the listing of a folder comes back empty, and then gives up; `set ftp:list-empty-ok yes` avoids it. `curl -T` works as it is.
 - `curl -T` reads brackets in the name of the file to send as a range to step through. `-g` switches that off; file names with brackets are common in comic archives.
 - One `curl` call can send many files, as pairs of `-T FILE URL`, and keeps one connection open for all of them. That copied at about 1 MB per second, against 0.6 with one call per file of about 1 MB.
+- The same server answers a delete (`DELE`) with `226 File deleted.` Python's `ftplib` expects 250 there and raises an error, although the file is gone. List the folder afterwards to know.
 - The same server lists nothing when `LIST` is given a folder's path, without reporting an error. Step into the folder first (`CWD`), then send `LIST` alone; `curl` and `lftp` do that by themselves, Python's `ftplib` does not. An empty listing can look like a failed copy.
 - While the FTP server runs, the Vita's screen turns off after a while but the Vita does not go to sleep, and a copy carries on.
 - A copy breaks when the computer or the Vita moves to another Wi-Fi network in the middle of it, and VitaShell's server can then hang: it takes a connection and says nothing. Closing VitaShell and starting it again clears that. Keep both on one network until the copy is done.
@@ -317,7 +323,7 @@ Kumiko was chosen: an open licence, adjustable, and it keeps sound effects that 
 ### The Vita
 
 - SDL2's Vita renderer limits textures to 4096 x 4096.
-- SDL2 on the Vita (2.32.8) has the motion sensor as two SDL sensors, an accelerometer and a gyroscope, once `SDL_INIT_SENSOR` is started. The accelerometer gives three numbers in metres per second squared, along the Vita's own axes. SDL sends an event for every reading unless `SDL_SENSORUPDATE` events are switched off; `SDL_SensorGetData` gives the latest reading either way.
+- SDL2 on the Vita (2.32.8) has the motion sensor as two SDL sensors, an accelerometer and a gyroscope, once `SDL_INIT_SENSOR` is started. The accelerometer gives three numbers in metres per second squared, along the Vita's own axes, and they point the way gravity pulls: seen in the log, about (3, -9, -3) held the usual way and tilted back a little, about (8, -4, -8) with the left end up, about (-8, -4, -4) with the right end up. SDL sends an event for every reading unless `SDL_SENSORUPDATE` events are switched off. With them off, SDL also stops fetching readings when it looks for events (`SDL_CalculateShouldUpdateSensors` in `src/events/SDL_events.c`), and `SDL_SensorGetData` keeps returning zeros. Call `SDL_SensorUpdate` before it.
 - SDL2 on the Vita (2.32.8) reports the front screen as touch device 1, of the kind "direct", and the rear pad as device 2, of the kind "indirect". A finger's place comes as a share of the screen, 0 to 1. SDL also sends every touch again as a mouse click unless the hint `SDL_HINT_TOUCH_MOUSE_EVENTS` is "0".
 - The Vita SDK has release channels (`vdpm channels`): `2026.08` is the supported one, with a toolchain of 2026-08-25, and `nightly` is rebuilt continuously. Installing without naming a channel gives the newest supported one. `vdpm status` tells what an installation follows.
 - SDL2's Vita renderer offers the pixel formats ABGR8888, ARGB8888, RGB565 and BGR565. `SDL_CreateTextureFromSurface` (SDL 2.32.8) picks RGB565 for a picture without transparency in any other format, which is what a decoded JPEG is. Seen in the log on the device.
