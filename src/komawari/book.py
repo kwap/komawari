@@ -32,12 +32,14 @@ def without_false_panels(page: PageResult) -> PageResult:
 
     A detector marks boxes on every page, but three kinds of page have nothing
     worth stepping through:
-    - covers and other extras, recognised by a file name without a page number;
+    - covers and other extras, recognised by a file name without a page number,
+      or with the number 0, which no printed page has;
     - pages with a single panel, where cutting to it could only lose something;
     - title and text pages, where the boxes cover less than half the page.
     """
     covered = sum(panel.width * panel.height for panel in page.panels)
-    is_extra = len(page_numbers(page.file)) == 0
+    numbers = page_numbers(page.file)
+    is_extra = len(numbers) == 0 or numbers[0] == 0
     is_sparse = covered < MIN_PANEL_COVERAGE * page.width * page.height
     if is_extra or len(page.panels) == 1 or is_sparse:
         return replace(page, panels=[])

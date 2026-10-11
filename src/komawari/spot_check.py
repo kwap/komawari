@@ -32,7 +32,7 @@ def spot_check(archive: Path, work_dir: Path, kumiko_script: Path, count: int, r
     pages_dir = work_dir / "pages"
     pages_dir.mkdir(parents=True)
     extract(archive, chosen, pages_dir)
-    page_files = [pages_dir / name for name in chosen]
+    page_files = [pages_dir / Path(name).name for name in chosen]
 
     found = run_kumiko(page_files, kumiko_script, right_to_left)
     # The same clean-up as `komawari prepare`, so this shows what the reader will show.

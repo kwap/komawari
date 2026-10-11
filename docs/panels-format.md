@@ -64,7 +64,7 @@ The numbers in the example are made up.
 
 - All numbers are whole numbers.
 - An empty `panels` list means: show the whole page. `komawari prepare` empties the list in three cases:
-  - the file name has no page number at its end (covers and other extras, such as `..._Cover.jpg` and `..._000a.jpg`);
+  - the file name has no page number at its end, or the number 0 (covers and other extras, such as `..._Cover.jpg`, `..._000a.jpg` and `... p000.jpg`);
   - only one panel was detected;
   - the detected panels cover less than half the page (title pages and text pages).
 - Rectangles are in the pixels of the image named by `file`, so a reader uses them as they are. `komawari resize` converts them when it makes the smaller images.

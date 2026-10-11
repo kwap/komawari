@@ -235,7 +235,7 @@ def _extract_pages(archive: Path, book_dir: Path) -> Path:
     """Extracts the pages that are not yet in book_dir/pages and returns that folder."""
     pages_dir = book_dir / "pages"
     pages_dir.mkdir(parents=True, exist_ok=True)
-    missing = [name for name in list_images(archive) if not (pages_dir / name).exists()]
+    missing = [name for name in list_images(archive) if not (pages_dir / Path(name).name).exists()]
     if missing:
         print(f"  Extracting {len(missing)} pages to {pages_dir}/")
         extract(archive, missing, pages_dir)
@@ -246,7 +246,7 @@ def _find_panels(archive: Path, pages_dir: Path, panels_file: Path, right_to_lef
     """Runs Kumiko on the extracted pages and writes the comic's full-size panels.json."""
     names = list_images(archive)
     print(f"  Running kumiko on {len(names)} pages")
-    found = run_kumiko([pages_dir / name for name in names], KUMIKO_SCRIPT, right_to_left)
+    found = run_kumiko([pages_dir / Path(name).name for name in names], KUMIKO_SCRIPT, right_to_left)
     book = Book(
         title=archive.stem,
         subtitle="",

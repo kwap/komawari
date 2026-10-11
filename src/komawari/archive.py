@@ -8,7 +8,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from komawari.pages import is_image
+from komawari.pages import in_reading_order, is_image
 
 ARCHIVE_SUFFIXES = {".cbz", ".cbr", ".cb7", ".zip", ".rar", ".7z"}
 
@@ -34,12 +34,11 @@ def newest_archive(folder: Path) -> Path | None:
 
 
 def list_images(archive: Path) -> list[str]:
-    """Returns the names of the images inside the archive, in the archive's own order.
+    """Returns the names of the images inside the archive, in reading order.
 
-    That order is the reading order: the cover comes first, although its file
-    name would sort last.
+    A name is as the archive has it, so it may begin with a folder.
     """
-    return [name for name in _list_entries(archive) if is_image(name)]
+    return in_reading_order([name for name in _list_entries(archive) if is_image(name)])
 
 
 def _list_entries(archive: Path) -> list[str]:
@@ -77,4 +76,13 @@ def stated_reading_direction(archive: Path) -> bool | None:
 
 
 def extract(archive: Path, names: list[str], destination: Path) -> None:
-    subprocess.run(["bsdtar", "-xf", str(archive), "-C", str(destination), *names], check=True)
+    """Extracts the named files into destination. A file that sits in a folder
+    inside the archive lands in destination itself, under its bare name."""
+    # bsdtar reads each name as a pattern, in which [ ] * ? and \ have a meaning of
+    # their own. A backslash in front takes that meaning away. File names such as
+    # "Page 004 [Digital].png" are common.
+    patterns = [re.sub(r"([\[\]*?\\])", r"\\\1", name) for name in names]
+    subprocess.run(["bsdtar", "-xf", str(archive), "-C", str(destination), *patterns], check=True)
+    for name in names:
+        if Path(name).name != name:
+            (destination / name).rename(destination / Path(name).name)

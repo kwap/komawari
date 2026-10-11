@@ -41,6 +41,10 @@ SLOWEST_LOAD_SECONDS = 3.0
 # loaded in half the time. The owner then chose 0.8, for a little more
 # sharpness; that takes about a third longer than 0.7.
 HEAVY_PAGE_SCALE = 0.8
+# Only a large scan has those pixels to spare: one at least twice as wide and
+# high as the page made from it, which is then very sharp. A smaller scan keeps
+# every pixel it brings.
+LARGE_SCAN_SCALE = 0.5
 
 
 @dataclass(frozen=True)
@@ -104,7 +108,7 @@ def _shrink_page(page: PageResult, source_dir: Path, target_dir: Path) -> _Small
     width, height, jpeg = _resized_jpeg(plain, page, scale)
     seconds = load_seconds(width * height, len(jpeg), in_colour)
     is_slow = seconds > SLOWEST_LOAD_SECONDS
-    is_heavy = page.width > page.height or in_colour
+    is_heavy = (page.width > page.height or in_colour) and scale <= LARGE_SCAN_SCALE
     if is_slow:
         # Loading time follows the number of pixels, which follows the square of the scale.
         scale *= math.sqrt(SLOWEST_LOAD_SECONDS / seconds)
