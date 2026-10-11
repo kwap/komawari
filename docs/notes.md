@@ -1,6 +1,6 @@
 # Notes
 
-Last updated: 2026-10-10.
+Last updated: 2026-10-11.
 
 ## Current state
 
@@ -107,6 +107,7 @@ The emulator:
 - Its address is https://kwap.io/komawari/. The domain `kwap.io` is set on the owner's personal site project (`kwap/kwap.github.io`), and GitHub then serves the page of every other project of the account under it. Nothing in this repository sets the address. The older address, `kwap.github.io/komawari`, is sent on to the new one.
 - The page's two fonts are files in `fonts/`, with their licence texts. Bricolage Grotesque is a subset made with fontTools (`pyftsubset`: Latin letters, weights 500 to 800). IBM Plex Mono is IBM's own file, unchanged, because its licence reserves the name; see `docs/licences.md`.
 - Safari refuses some things for a page opened as a local file that it allows on a website. On the owner's home page a `<link rel="preload">` line for a font made that font fail this way. The manual has no such line. Look at the page in Safari itself, not only in a preview.
+- Blocks of commands: a script in the page (`TERMINAL_SCRIPT` in `manual.py`) puts each one in a "terminal" with a copy button and colours the words in the Tokyo Night theme's colours. It reads the lines as shell commands, so another kind of code would be coloured wrongly. The same script is in the Linux Whisper page.
 
 ## On the Vita: what the user's guide leaves out
 

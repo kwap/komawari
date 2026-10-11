@@ -49,6 +49,8 @@ The manual (`index.html`) shows its text in two fonts. They are files in `fonts/
 
 Because of the reserved name, the IBM Plex file stays as IBM publishes it; a changed copy would need another name.
 
+The blocks of commands take their colours from the Tokyo Night theme, light and dark (MIT; https://github.com/tokyo-night/tokyo-night-vscode-theme, read on 2026-10-11). Only the colour values are used; none of the theme's files are in this repository.
+
 ## What a release contains
 
 The released `komawari.vpk` is the reader as built by GitHub. It holds the reader's own code and artwork (MIT) and, linked in from the Vita SDK: SDL2 and SDL2_image, cJSON, the picture libraries that SDL2_image brings along (libpng, libjpeg-turbo, libwebp, zlib) and the SDK's C library (newlib). Kumiko is not part of a release.

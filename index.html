@@ -36,6 +36,22 @@ try {
   --bg: #0d0d0d; --ink: #f1eee6; --dim: #a5a299; --line: #3a3934; --soft: #22211e;
   --accent: #cdfa3c; --on-accent: #0d0d0d;
 }
+/* Blocks of commands use the colours of the Tokyo Night theme: its light variant on the light page and its
+   dark one on the dark page. */
+:root {
+  --t-bg: #e6e7ed; --t-bar: #d6d8df; --t-fg: #343b59; --t-comment: #6c6e75; --t-command: #2959aa;
+  --t-keyword: #65359d; --t-option: #8f5e15; --t-string: #385f0d; --t-variable: #8c4351; --t-operator: #006c86;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --t-bg: #1a1b26; --t-bar: #16161e; --t-fg: #a9b1d6; --t-comment: #646e9c; --t-command: #7aa2f7;
+    --t-keyword: #bb9af7; --t-option: #e0af68; --t-string: #9ece6a; --t-variable: #f7768e; --t-operator: #89ddff;
+  }
+}
+:root[data-theme="dark"] {
+  --t-bg: #1a1b26; --t-bar: #16161e; --t-fg: #a9b1d6; --t-comment: #646e9c; --t-command: #7aa2f7;
+  --t-keyword: #bb9af7; --t-option: #e0af68; --t-string: #9ece6a; --t-variable: #f7768e; --t-operator: #89ddff;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 18px; scroll-behavior: smooth; scroll-padding-top: 20px; }
 body {
@@ -52,7 +68,7 @@ a { color: inherit; }
   letter-spacing: 0.005em; word-spacing: 0.08em; line-height: 0.88;
 }
 /* Labels */
-.bar, .roles, .contents, h2 span, th, footer a {
+.bar, .roles, .contents, h2 span, th, .termbar, footer a {
   font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.72rem; font-weight: 500; font-stretch: 100%;
   letter-spacing: 0.12em; word-spacing: 0; text-transform: uppercase; line-height: 1.5;
 }
@@ -116,7 +132,7 @@ main p, main ul, main ol, main pre, main table { margin-bottom: 16px; }
 main p, main li { max-width: 68ch; }
 main ul, main ol { padding-left: 1.4em; }
 main li + li { margin-top: 6px; }
-main li pre { margin: 10px 0 12px; }
+main li pre, main li .terminal { margin: 10px 0 12px; }
 main a, .lines a { text-decoration-thickness: 2px; text-underline-offset: 3px; }
 main a:hover, .lines a:hover { color: var(--accent); }
 code {
@@ -124,8 +140,31 @@ code {
   background: var(--soft); padding: 0.12em 0.4em;
   font-variant-ligatures: none; /* keeps the two hyphens of --ltr apart */
 }
-pre { max-width: 46rem; border: var(--rule) solid var(--ink); padding: 14px 18px; overflow-x: auto; line-height: 1.6; }
-pre code { background: none; padding: 0; font-size: 0.8rem; }
+/* A block of commands. The script at the end of the page puts each one in a "terminal" with a bar on top. */
+pre {
+  max-width: 52rem; border: var(--rule) solid var(--ink); background: var(--t-bg); color: var(--t-fg);
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.8rem; font-variant-ligatures: none;
+  line-height: 1.6; padding: 14px 18px; overflow-x: auto;
+}
+pre code { font: inherit; background: none; padding: 0; }
+.terminal { max-width: 52rem; margin-bottom: 16px; border: var(--rule) solid var(--ink); background: var(--t-bg); }
+.terminal pre { max-width: none; margin: 0; border: 0; }
+.termbar {
+  display: flex; justify-content: space-between; align-items: center; padding: 6px 6px 6px 14px;
+  background: var(--t-bar); color: var(--t-comment);
+}
+.copy {
+  font: inherit; letter-spacing: inherit; text-transform: inherit;
+  background: var(--t-command); color: var(--t-bg); border: 0; padding: 5px 10px; cursor: pointer;
+}
+.copy:hover { background: var(--t-fg); }
+.t-comment { color: var(--t-comment); }
+.t-command { color: var(--t-command); }
+.t-keyword { color: var(--t-keyword); }
+.t-option { color: var(--t-option); }
+.t-string { color: var(--t-string); }
+.t-variable { color: var(--t-variable); }
+.t-operator { color: var(--t-operator); }
 /* A table is as wide as it needs to be, and scrolls sideways by itself on a narrow screen. */
 table { display: block; width: fit-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; padding: 10px 28px 10px 0; border-bottom: 1px solid var(--line); }
@@ -389,7 +428,8 @@ uv run komawari transfer
   var root = document.documentElement;
   var button = document.getElementById("switch");
   function current() {
-    return root.getAttribute("data-theme") || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    var systemIsDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return root.getAttribute("data-theme") || (systemIsDark ? "dark" : "light");
   }
   function label() { button.textContent = current() === "dark" ? "light" : "dark"; }
   button.addEventListener("click", function () {
@@ -399,6 +439,77 @@ uv run komawari transfer
     label();
   });
   label();
+})();
+</script>
+<script>
+(function () {
+  function escape(text) { return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function part(kind, text) { return '<span class="t-' + kind + '">' + escape(text) + "</span>"; }
+
+  // Returns the commands as HTML, each word wrapped by what it is: a comment, a program's name, an option, ...
+  function coloured(text) {
+    var continued = false;  // the line before ended with a backslash, so this line carries its command on
+    return text.split("\n").map(function (line) {
+      if (/^\s*#/.test(line)) return part("comment", line);
+      // In turn: spaces, a quoted text, a variable, a sign that joins commands, any other run of characters.
+      var pieces = /(\s+)|("[^"]*"|'[^']*')|(\$\w+|\$\{[^}]*\})|(\|\||&&|[|;\\])|([^\s"'$|;\\]+)/g;
+      var out = "", piece, atStart = true, wantsCommand = !continued;
+      while ((piece = pieces.exec(line))) {
+        if (piece[1]) { out += piece[1]; atStart = true; continue; }
+        if (piece[2]) {
+          out += part("string", piece[2]);
+          wantsCommand = false;
+        } else if (piece[3]) {
+          out += part("variable", piece[3]);
+          wantsCommand = false;
+        } else if (piece[4]) {
+          out += part("operator", piece[4]);
+          if (piece[4] !== "\\") wantsCommand = true;
+        } else {
+          var word = piece[5], setting = /^(\w+)=(.*)$/.exec(word);
+          if (wantsCommand && atStart && setting) {
+            out += part("variable", setting[1]) + part("operator", "=") + escape(setting[2]);
+            wantsCommand = false;
+          } else if (wantsCommand && atStart && word === "sudo") {
+            out += part("keyword", word);  // the program's name comes after it
+          } else if (wantsCommand && atStart) {
+            out += part("command", word);
+            wantsCommand = false;
+          } else if (atStart && word.charAt(0) === "-") {
+            out += part("option", word);
+          } else {
+            out += escape(word);
+          }
+        }
+        atStart = false;
+      }
+      continued = /\\\s*$/.test(line);
+      return out;
+    }).join("\n");
+  }
+
+  document.querySelectorAll("main pre").forEach(function (pre) {
+    var text = pre.textContent.replace(/\n+$/, "");
+    var terminal = document.createElement("div");
+    terminal.className = "terminal";
+    terminal.innerHTML =
+      '<div class="termbar"><span>terminal</span><button class="copy" type="button">copy</button></div>';
+    pre.parentNode.insertBefore(terminal, pre);
+    terminal.appendChild(pre);
+    pre.innerHTML = coloured(text);
+    // The button copies the commands without the comment lines.
+    terminal.querySelector(".copy").addEventListener("click", function () {
+      var button = this;
+      var commands = text.split("\n").filter(function (line) {
+        return line.trim() !== "" && line.trim().charAt(0) !== "#";
+      });
+      if (!navigator.clipboard) return;
+      navigator.clipboard.writeText(commands.join("\n")).then(function () {
+        button.textContent = "copied";
+        setTimeout(function () { button.textContent = "copy"; }, 2000);
+      });
+    });
+  });
 })();
 </script>
 </body>
