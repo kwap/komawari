@@ -20,6 +20,8 @@ class Book:
     """One comic: its pages in reading order, each with its panels in reading order."""
 
     title: str
+    subtitle: str  # empty when not given
+    author: str  # empty when not given
     reading_direction: str
     detector: str
     pages: list[PageResult]
@@ -53,6 +55,9 @@ def load_book(path: Path) -> Book:
         raise ValueError(f"{path} has format {data['format']}; this tool reads format {FORMAT_VERSION}.")
     return Book(
         title=str(data["title"]),
+        # Files written before 2026-10-11 have neither of these two.
+        subtitle=str(data.get("subtitle", "")),
+        author=str(data.get("author", "")),
         reading_direction=str(data["reading_direction"]),
         detector=str(data["detector"]),
         pages=[page_from_json(page) for page in data["pages"]],

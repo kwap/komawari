@@ -59,6 +59,16 @@ Komawari expects manga, read right to left. For a comic read left to right, run 
 uv run komawari prepare "comics/My Comic.cbz" --ltr --force
 ```
 
+Under each cover the reader shows a title, a subtitle and an author. To set them, put a text file next to the comic, with the same name and the ending `.txt`. For `My Comic.cbz` that is `My Comic.txt`:
+
+```
+title: My Comic
+subtitle: Part 1
+author: Some Body
+```
+
+Then run `uv run komawari prepare` again; this takes a moment. Without the file, the title is the name of the comic's file.
+
 ## 3. Copy to the Vita
 
 These steps have not been tried with a real Vita yet.
@@ -80,17 +90,20 @@ To add comics later, repeat part 2 and steps 1 to 4. Step 5 is only needed once.
 
 ## Reading
 
-| | Buttons |
-|---|---|
-| Choose a comic | D-pad left and right |
-| Open it | Cross |
-| Next panel | D-pad right, R or Cross |
-| Previous panel | D-pad left or L |
-| Whole page and back | D-pad up or Triangle |
-| Back to your comics | Circle |
-| Leave | PS button |
+| | Buttons | Touch screen |
+|---|---|---|
+| Choose a comic | D-pad left and right | Slide the covers, or tap one |
+| Open it | Cross | Tap the cover in the middle |
+| Next panel | D-pad right, R or Cross | |
+| Previous panel | D-pad left or L | |
+| Whole page and back | D-pad up or Triangle | |
+| Look closer | | Spread two fingers |
+| Move the picture | | Drag it with one finger |
+| Put the picture back | | Tap it |
+| Back to your comics | Circle | |
+| Leave | PS button | |
 
-With only one comic on the Vita, it opens straight away.
+With only one comic on the Vita, it opens straight away. With three or more, the covers go round: after the last comic comes the first again.
 
 ## Commands
 

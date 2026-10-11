@@ -33,8 +33,8 @@ Licences as GitHub reports them for each repository, read on 2026-10-09.
 | vitasdk (GCC 15.2.0 cross compiler, newlib, vita-headers, tools) | 2026.08.1 | Several: vita-headers is MIT; GitHub reports GPL-2.0 for vitasdk's newlib. Not examined further | installed with `vdpm` |
 | libwebp 1.6.0, linked in through SDL2_image on the Vita | 1.6.0 | Not checked | Vita SDK package |
 | CMake | 3.26 or newer | Not checked | system package |
-| Dela Gothic One (font for the name in the artwork; file in `reader/artwork/`) | from google/fonts, 2026-10-10 | SIL Open Font License 1.1 | https://github.com/syakuzen/DelaGothic |
-| Zen Kaku Gothic New Bold (font for the tagline in the artwork; file in `reader/artwork/`) | from google/fonts, 2026-10-10 | SIL Open Font License 1.1 | https://github.com/googlefonts/zen-kakugothic |
+| Dela Gothic One (font for the name in the artwork and for a comic's title in `title.png`; file in `reader/artwork/`) | from google/fonts, 2026-10-10 | SIL Open Font License 1.1 | https://github.com/syakuzen/DelaGothic |
+| Zen Kaku Gothic New Bold (font for the tagline in the artwork and for a comic's subtitle and author in `title.png`; file in `reader/artwork/`) | from google/fonts, 2026-10-10 | SIL Open Font License 1.1 | https://github.com/googlefonts/zen-kakugothic |
 | Vita3K (emulator, for testing only) | continuous build of 2026-10-08 | GPL-2.0 | https://vita3k.org |
 | `actions/checkout` and `actions/upload-artifact` (the build on GitHub; checked 2026-10-10) | v7 | MIT | https://github.com/actions |
 

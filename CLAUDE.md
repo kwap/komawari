@@ -39,7 +39,7 @@ uv run komawari artwork                                    # redraw the pictures
 ## C rules (reader)
 
 - C11. `-Wall -Wextra` must stay free of warnings in our own files.
-- Only SDL2 calls for windows, input, files and images, so the code stays the same on the desktop and the Vita. The one exception is listing a folder (`reader/library.c`), which SDL2 cannot do; it uses POSIX `dirent.h`.
+- Only SDL2 calls for windows, input, files and images, so the code stays the same on the desktop and the Vita. There are two exceptions. Listing a folder (`reader/library.c`), which SDL2 cannot do, uses POSIX `dirent.h`. Reading a whole file (`reader/file.c`) uses C's own `fopen`, `setvbuf` and `fread`, because SDL2 cannot set the size of the read buffer and the Vita's default of 1 KB is four times slower.
 - One job per file; each header starts with a comment saying what the file is for. Format with `clang-format` (settings in `.clang-format`).
 - Structs for structured data (`Panel`, `Page`, `Book`).
 

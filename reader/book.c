@@ -1,7 +1,12 @@
 #include "book.h"
 
+#include <errno.h>
+#include <string.h>
+
 #include <SDL.h>
 #include <cJSON.h>
+
+#include "file.h"
 
 /* The version of panels.json this reader understands. */
 #define FORMAT_VERSION 1
@@ -93,10 +98,11 @@ int book_load(Book *book, const char *book_dir)
     book->page_count = 0;
     book->pages = NULL;
 
-    /* SDL_LoadFile reads the whole file and adds a zero byte at the end. */
-    char *text = SDL_LoadFile(path, NULL);
+    /* file_read adds a zero byte at the end, which makes the file a string. */
+    size_t size;
+    char *text = file_read(path, &size);
     if (text == NULL) {
-        SDL_Log("Cannot read %s: %s", path, SDL_GetError());
+        SDL_Log("Cannot read %s: %s", path, strerror(errno));
         return -1;
     }
     cJSON *json = cJSON_Parse(text);

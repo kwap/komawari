@@ -78,8 +78,12 @@ TEXT_FONT = "ZenKakuGothicNew-Bold.ttf"
 # The Vita decides where its start button goes: with the layout style
 # "psmobile" (see template.xml) it covers x 520 to 800, y 155 to 313. The tall
 # panel is drawn around that spot, so the button sits in the middle of it.
-PAGE_NAME: Shape = [(20, 20), (490, 20), (483.8, 138), (20, 152)]
-PAGE_TAGLINE: Shape = [(20, 166), (483.1, 152), (466, 480), (20, 480)]
+#
+# The Vita also lays a row of its own round icons over the top edge of the
+# page. The name panel is tall, and the name sits low in it, so that those
+# icons do not cover the name.
+PAGE_NAME: Shape = [(20, 20), (490, 20), (481, 192), (20, 206)]
+PAGE_TAGLINE: Shape = [(20, 220), (480.2, 206), (466, 480), (20, 480)]
 PAGE_START: Shape = [(504, 20), (820, 20), (820, 480), (480, 480)]
 
 
@@ -119,15 +123,16 @@ def _page(fonts_dir: Path) -> Image.Image:
     canvas.shape(PAGE_TAGLINE, INK_LIGHT)
     canvas.shape(PAGE_START, ACCENT)
 
-    # Top-left panel: the name, with its Japanese spelling under it.
-    canvas.text(44, 30, APP_NAME, NAME_FONT, 52, PAPER, "la")
-    canvas.text(46, 96, APP_NAME_JAPANESE, NAME_FONT, 24, ACCENT, "la")
+    # Top-left panel: the name, with its Japanese spelling under it. Both sit
+    # in the lower part of the panel, clear of the Vita's own icons.
+    canvas.text(44, 84, APP_NAME, NAME_FONT, 52, PAPER, "la")
+    canvas.text(46, 150, APP_NAME_JAPANESE, NAME_FONT, 24, ACCENT, "la")
 
     # Bottom-left panel: the tagline, and the Japanese name running down the edge, barely visible.
     for row, character in enumerate(APP_NAME_JAPANESE):
-        canvas.text(410, 176 + row * 72, character, NAME_FONT, 70, INK_LIGHTER, "ma")
+        canvas.text(408, 228 + row * 62, character, NAME_FONT, 60, INK_LIGHTER, "ma")
     for row, line in enumerate(TAGLINE_LINES):
-        canvas.text(46, 200 + row * 52, line, TEXT_FONT, 42, PAPER, "la")
+        canvas.text(46, 252 + row * 52, line, TEXT_FONT, 42, PAPER, "la")
     return canvas.finished()
 
 

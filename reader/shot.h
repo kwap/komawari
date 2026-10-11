@@ -24,4 +24,11 @@ Shot shot_between(Shot a, Shot b, float t);
 /* Where a rectangle of the page lands on the screen in this shot. */
 SDL_FRect shot_on_screen(Shot shot, SDL_FRect page_area);
 
+/* The shot after fingers moved the picture. (x, y) is the point on the screen
+   between the fingers; it came there from (x - dx, y - dy), and the fingers
+   spread to spread times their distance. The picture stays under the fingers.
+   It gets no smaller than the whole page and no larger than twice its pixels,
+   and cannot be pushed off the screen. The dimming around the panel goes. */
+Shot shot_touched(Shot shot, const Page *page, float x, float y, float dx, float dy, float spread);
+
 #endif

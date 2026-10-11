@@ -29,6 +29,7 @@ from komawari.archive import (
 )
 from komawari.artwork import preview, write_artwork
 from komawari.book import Book, load_book, save_book, without_false_panels
+from komawari.details import details_file, read_details
 from komawari.kumiko_runner import run_kumiko
 from komawari.manual import build_manual
 from komawari.release import LATEST_PACKAGE_URL, download_latest_package
@@ -45,7 +46,7 @@ from komawari.vita_card import (
     is_same_on_card,
     remove_comic,
 )
-from komawari.vita_copy import MAX_HEIGHT, MAX_WIDTH, make_vita_copy
+from komawari.vita_copy import MAX_HEIGHT, MAX_WIDTH, make_vita_copy, refresh_details
 
 # All paths are relative to the repository root, where the commands are run.
 KUMIKO_SCRIPT = Path("third_party/kumiko/kumiko")
@@ -199,8 +200,15 @@ def _prepare_comic(archive: Path, asked_direction: bool | None, force: bool) -> 
         shutil.rmtree(book_dir, ignore_errors=True)
         shutil.rmtree(target_dir, ignore_errors=True)
 
+    try:
+        details = read_details(archive)
+    except ValueError as error:
+        sys.exit(str(error))
+
     if (target_dir / "panels.json").exists():
         print(f"Skipping {archive.name}: {target_dir}/ already exists.")
+        if refresh_details(target_dir, details, ARTWORK_FONTS_DIR):
+            print(f"  Brought its title, subtitle and author up to date ({details_file(archive)}).")
         _remove_full_size_pages(book_dir)
         return False
 
@@ -215,8 +223,10 @@ def _prepare_comic(archive: Path, asked_direction: bool | None, force: bool) -> 
         _find_panels(archive, pages_dir, panels_file, right_to_left)
 
     print(f"  Resizing the pages to fit {MAX_WIDTH} x {MAX_HEIGHT}")
-    book = make_vita_copy(book_dir, target_dir)
-    print(f"  Wrote {target_dir}/: {len(book.pages)} pages, cover.jpg and panels.json")
+    copy = make_vita_copy(book_dir, target_dir, details, ARTWORK_FONTS_DIR)
+    print(f"  Wrote {target_dir}/: {len(copy.book.pages)} pages, cover.jpg and panels.json")
+    if copy.pages_made_smaller:
+        print(f"  {copy.pages_made_smaller} wide or colour pages were made smaller, so that the Vita loads them faster")
     _remove_full_size_pages(book_dir)
     return True
 
@@ -239,6 +249,8 @@ def _find_panels(archive: Path, pages_dir: Path, panels_file: Path, right_to_lef
     found = run_kumiko([pages_dir / name for name in names], KUMIKO_SCRIPT, right_to_left)
     book = Book(
         title=archive.stem,
+        subtitle="",
+        author="",
         reading_direction="rtl" if right_to_left else "ltr",
         detector=found.detector,
         pages=[without_false_panels(page) for page in found.pages],

@@ -5,6 +5,11 @@
 /* Darker when zoomed in on a panel, lighter when the whole page is shown. */
 #define DIM_AROUND_PANEL 200.0f
 #define DIM_ON_WHOLE_PAGE 120.0f
+/* The closest the fingers can zoom in: this many screen pixels per page pixel. */
+#define CLOSEST_ZOOM 2.0f
+/* Each move of the fingers takes this much off the dimming, so that it is gone
+   after a few moves and the whole picture can be looked at. */
+#define DIM_LOST_PER_TOUCH 25.0f
 
 /* The smallest rectangle with the screen's shape that contains area, centred on it. */
 static SDL_FRect fit_screen(SDL_FRect area)
@@ -64,4 +69,48 @@ SDL_FRect shot_on_screen(Shot shot, SDL_FRect page_area)
     float scale = (float)SCREEN_WIDTH / shot.view.w;
     return (SDL_FRect){(page_area.x - shot.view.x) * scale, (page_area.y - shot.view.y) * scale,
                        page_area.w * scale, page_area.h * scale};
+}
+
+/* Keeps the page on the screen along one direction, across or down. start and
+   size say which stretch of the page the screen shows now; the two after them
+   say the same for before the fingers moved. Returns the start to use. */
+static float keep_on_page(float start, float size, float page_size, float start_before,
+                          float size_before)
+{
+    if (size >= page_size) {
+        /* All of the page fits on the screen: it sits in the middle. */
+        return (page_size - size) / 2;
+    }
+    /* The screen shows nothing beyond the edges of the page. But a panel at
+       the edge is framed with some room beyond it. That much may stay, or the
+       picture would jump at the first touch. */
+    float beyond_start = SDL_max(-start_before, 0.0f);
+    float beyond_end = SDL_max(start_before + size_before - page_size, 0.0f);
+    return SDL_clamp(start, -beyond_start, page_size - size + beyond_end);
+}
+
+Shot shot_touched(Shot shot, const Page *page, float x, float y, float dx, float dy, float spread)
+{
+    SDL_FRect whole = {0, 0, (float)page->width, (float)page->height};
+    SDL_FRect before = shot.view;
+    /* The point of the page that was under the fingers before they moved. */
+    float page_per_screen = shot.view.w / SCREEN_WIDTH;
+    float held_x = shot.view.x + (x - dx) * page_per_screen;
+    float held_y = shot.view.y + (y - dy) * page_per_screen;
+
+    float widest = fit_screen(whole).w;
+    float narrowest = SDL_min(SCREEN_WIDTH / CLOSEST_ZOOM, widest);
+    shot.view.w = SDL_clamp(shot.view.w / spread, narrowest, widest);
+    shot.view.h = shot.view.w * SCREEN_HEIGHT / SCREEN_WIDTH;
+
+    /* Put that point under the fingers again. */
+    page_per_screen = shot.view.w / SCREEN_WIDTH;
+    shot.view.x = held_x - x * page_per_screen;
+    shot.view.y = held_y - y * page_per_screen;
+
+    shot.view.x = keep_on_page(shot.view.x, shot.view.w, whole.w, before.x, before.w);
+    shot.view.y = keep_on_page(shot.view.y, shot.view.h, whole.h, before.y, before.h);
+
+    shot.dim = SDL_max(shot.dim - DIM_LOST_PER_TOUCH, 0.0f);
+    return shot;
 }

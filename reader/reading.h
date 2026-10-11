@@ -3,7 +3,10 @@
    Next panel:         Right arrow, Space or Enter | D-pad right, R or Cross
    Previous panel:     Left arrow                  | D-pad left or L
    Whole page / panel: Up arrow                    | D-pad up or Triangle
-   Back to the comics: Backspace                   | Circle */
+   Back to the comics: Backspace                   | Circle
+
+   On the touch screen: two fingers spread or pinch the picture, one finger
+   drags it, and a tap puts it back. (Mouse: wheel, left button, click.) */
 #ifndef KOMAWARI_READING_H
 #define KOMAWARI_READING_H
 

@@ -1,11 +1,10 @@
 #include "reading.h"
 
-#include <SDL_image.h>
-
 #include "book.h"
 #include "draw.h"
 #include "input.h"
 #include "motion.h"
+#include "pages.h"
 #include "screen.h"
 #include "shot.h"
 
@@ -31,13 +30,26 @@ typedef struct {
     int view;       /* index of the panel shown; 0 on a page without panels */
     int whole_page; /* 1 while the whole page is shown instead of one panel */
 
-    /* What is on screen. The picture glides from one shot to another. */
-    SDL_Texture *page_picture;
+    /* What is on screen. The picture glides from one shot to another. While
+       the picture of the page being read is still loading, the page that was
+       read before stays on screen. */
+    Pages *pages;
+    int shown_page;             /* index into book.pages; -1 before the first picture */
+    SDL_Texture *shown_picture; /* NULL if it could not be loaded */
+    Uint32 page_asked;          /* when the page being read was asked for */
     Shot glide_from;
     Shot glide_to;
     Uint32 glide_start;
     Uint32 fade_start;
     Uint32 marks_start;
+
+    /* For the log: how the last step went, from the button to the end of its
+       movement. */
+    Uint32 step_start;       /* when the step was asked for */
+    int step_timed;          /* 1 until the step's line is in the log */
+    int frames;              /* frames drawn since step_start */
+    Uint32 first_frame_done; /* when the first of them was on screen */
+    Uint32 slowest_frame_ms;
 } Reading;
 
 static const Page *current_page(const Reading *reading)
@@ -83,26 +95,74 @@ static Shot shot_wanted(const Reading *reading)
     return shot_of_view(current_page(reading), reading->view, reading->whole_page);
 }
 
-/* Loads the current page's picture and lets it fade in. */
-static void show_new_page(Reading *reading)
+/* Starts the timing of a step. now is when the step was asked for. */
+static void time_step(Reading *reading, Uint32 now)
 {
-    char path[1024];
-    SDL_snprintf(path, sizeof(path), "%s/pages/%s", reading->comic_dir,
-                 current_page(reading)->file);
+    reading->step_start = now;
+    reading->step_timed = 1;
+    reading->frames = 0;
+    reading->slowest_frame_ms = 0;
+}
 
-    SDL_DestroyTexture(reading->page_picture);
-    reading->page_picture = IMG_LoadTexture(reading->renderer, path);
-    if (reading->page_picture == NULL) {
-        SDL_Log("Cannot load %s: %s", path, SDL_GetError());
+/* Counts a frame that was drawn from start to end. Once the step's movement
+   is over, writes one line about the step to the log. */
+static void time_frame(Reading *reading, Uint32 start, Uint32 end, int still_moving)
+{
+    if (!reading->step_timed) {
+        return;
     }
+    if (reading->frames == 0) {
+        reading->first_frame_done = end;
+    }
+    reading->frames += 1;
+    reading->slowest_frame_ms = SDL_max(reading->slowest_frame_ms, end - start);
+    if (still_moving) {
+        return;
+    }
+    const Page *page = current_page(reading);
+    SDL_Log("Step to page %d, view %d of %d, %s: on screen after %u ms; "
+            "then %d frames in %u ms, slowest %u ms",
+            reading->page + 1, reading->view + 1, view_count(page),
+            reading->whole_page || page->panel_count == 0 ? "whole page" : "one panel",
+            reading->first_frame_done - reading->step_start, reading->frames - 1,
+            end - reading->first_frame_done, reading->slowest_frame_ms);
+    reading->step_timed = 0;
+}
 
-    /* Loading takes a while, so the clock is read after it. */
+/* Is the reader waiting for the picture of the page being read? */
+static int waiting_for_page(const Reading *reading)
+{
+    return reading->shown_page != reading->page;
+}
+
+/* Tells the page loader where the reader is, and remembers when. */
+static void ask_for_page(Reading *reading, Uint32 now)
+{
+    reading->page_asked = now;
+    /* No line in the log for a step that never got on screen. */
+    reading->step_timed = 0;
+    pages_want(reading->pages, reading->page, reading->shown_page);
+}
+
+/* Puts the page being read on screen and lets it fade in, if its picture is ready. */
+static void show_page_if_ready(Reading *reading)
+{
+    SDL_Texture *picture;
+    if (!waiting_for_page(reading) || !pages_ready(reading->pages, reading->page, &picture)) {
+        return;
+    }
+    reading->shown_page = reading->page;
+    reading->shown_picture = picture;
+    /* The page shown until now is no longer needed for the screen. */
+    pages_want(reading->pages, reading->page, reading->shown_page);
+
     Uint32 now = SDL_GetTicks();
     reading->glide_from = shot_wanted(reading);
     reading->glide_to = reading->glide_from;
     reading->glide_start = 0;
     reading->fade_start = now;
     reading->marks_start = now;
+    time_step(reading, reading->page_asked);
 }
 
 /* Starts a glide from what is on screen now to the current view of the same page. */
@@ -113,6 +173,7 @@ static void glide_to_current_view(Reading *reading)
     reading->glide_to = shot_wanted(reading);
     reading->glide_start = now;
     reading->marks_start = now;
+    time_step(reading, now);
 }
 
 static int something_is_moving(const Reading *reading, Uint32 now)
@@ -122,15 +183,18 @@ static int something_is_moving(const Reading *reading, Uint32 now)
            motion_running(reading->marks_start, MARKS_MS, now);
 }
 
-/* The page, with everything outside the lit part dimmed. */
+/* The page on screen, with everything outside the lit part dimmed. */
 static void draw_page(const Reading *reading, Shot shot)
 {
-    const Page *page = current_page(reading);
+    if (reading->shown_page < 0) {
+        return;
+    }
+    const Page *page = &reading->book.pages[reading->shown_page];
     SDL_FRect whole = {0, 0, (float)page->width, (float)page->height};
 
-    if (reading->page_picture != NULL) {
+    if (reading->shown_picture != NULL) {
         SDL_FRect on_screen = shot_on_screen(shot, whole);
-        SDL_RenderCopyF(reading->renderer, reading->page_picture, NULL, &on_screen);
+        SDL_RenderCopyF(reading->renderer, reading->shown_picture, NULL, &on_screen);
     }
     draw_dim_outside(reading->renderer, shot_on_screen(shot, shot.lit), (Uint8)shot.dim);
 }
@@ -169,6 +233,20 @@ static void draw_frame(const Reading *reading, Uint32 now)
     SDL_RenderPresent(reading->renderer);
 }
 
+/* Fingers move and zoom the picture, which then stays where they left it. */
+static void touch_picture(Reading *reading, Input input)
+{
+    if (reading->shown_page < 0 || waiting_for_page(reading)) {
+        return;
+    }
+    Shot shot = shot_now(reading, SDL_GetTicks());
+    shot = shot_touched(shot, &reading->book.pages[reading->shown_page], input.x, input.y, input.dx,
+                        input.dy, input.spread);
+    reading->glide_from = shot;
+    reading->glide_to = shot;
+    reading->glide_start = 0;
+}
+
 /* On a desktop the window title tells where the reader is. */
 static void update_window_title(const Reading *reading)
 {
@@ -193,12 +271,21 @@ static void handle_action(Reading *reading, Action action)
         reading->whole_page = !reading->whole_page;
     }
 
+    if (reading->page == old_page && reading->view == old_view &&
+        reading->whole_page == old_whole_page) {
+        return;
+    }
+    update_window_title(reading);
+    Uint32 now = SDL_GetTicks();
     if (reading->page != old_page) {
-        show_new_page(reading);
-        update_window_title(reading);
-    } else if (reading->view != old_view || reading->whole_page != old_whole_page) {
+        ask_for_page(reading, now);
+    }
+    if (waiting_for_page(reading)) {
+        /* The marks move at once, so the press shows before the picture does. */
+        reading->marks_start = now;
+        show_page_if_ready(reading);
+    } else {
         glide_to_current_view(reading);
-        update_window_title(reading);
     }
 }
 
@@ -209,32 +296,60 @@ ReadingEnd reading_run(SDL_Window *window, SDL_Renderer *renderer, const char *c
     reading.renderer = renderer;
     reading.comic_dir = comic_dir;
 
+    Uint32 start = SDL_GetTicks();
     if (book_load(&reading.book, comic_dir) != 0) {
         draw_failure(renderer);
         return READING_ENDED_BACK;
     }
-    SDL_Log("Opened %s: %d pages", comic_dir, reading.book.page_count);
-    show_new_page(&reading);
+    SDL_Log("Opened %s: %d pages, panels.json read in %u ms", comic_dir, reading.book.page_count,
+            SDL_GetTicks() - start);
+    reading.pages = pages_open(renderer, comic_dir, &reading.book);
+    if (reading.pages == NULL) {
+        draw_failure(renderer);
+        book_free(&reading.book);
+        return READING_ENDED_BACK;
+    }
+    reading.shown_page = -1;
+    ask_for_page(&reading, SDL_GetTicks());
     update_window_title(&reading);
 
     ReadingEnd end;
     for (;;) {
         Uint32 now = SDL_GetTicks();
+        /* Taking in a loaded picture stalls drawing for a moment. So it waits
+           until a glide or a fade is over, unless the reader is waiting for
+           that very picture. The marks outlast both, so the loop is still
+           running when they end. */
+        if (waiting_for_page(&reading) || !(motion_running(reading.glide_start, GLIDE_MS, now) ||
+                                            motion_running(reading.fade_start, FADE_MS, now))) {
+            pages_take_loaded(reading.pages);
+            show_page_if_ready(&reading);
+            now = SDL_GetTicks();
+        }
         draw_frame(&reading, now);
+        int moving = something_is_moving(&reading, now);
+        time_frame(&reading, now, SDL_GetTicks(), moving);
 
-        Action action = input_next(something_is_moving(&reading, now));
-        if (action == ACTION_BACK) {
+        Input input = input_next(moving);
+        if (input.action == ACTION_BACK) {
             end = READING_ENDED_BACK;
             break;
         }
-        if (action == ACTION_QUIT) {
+        if (input.action == ACTION_QUIT) {
             end = READING_ENDED_QUIT;
             break;
         }
-        handle_action(&reading, action);
+        if (input.action == ACTION_DRAG || input.action == ACTION_PINCH) {
+            touch_picture(&reading, input);
+        } else if (input.action == ACTION_TAP && !waiting_for_page(&reading)) {
+            /* Back to the panel as the reader frames it. */
+            glide_to_current_view(&reading);
+        } else {
+            handle_action(&reading, input.action);
+        }
     }
 
-    SDL_DestroyTexture(reading.page_picture);
+    pages_close(reading.pages);
     book_free(&reading.book);
     return end;
 }

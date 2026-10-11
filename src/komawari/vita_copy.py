@@ -1,14 +1,20 @@
-"""Makes the Vita-sized copy of a prepared comic: smaller pages, a cover picture and a matching panels.json."""
+"""Makes the Vita-sized copy of a prepared comic: smaller pages, a cover picture, a
+picture of its title, and a matching panels.json."""
 
+import io
+import math
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from functools import partial
 from pathlib import Path
 
 from PIL import Image
 
 from komawari.book import Book, load_book, save_book
+from komawari.details import Details
+from komawari.load_time import load_seconds
 from komawari.shared_format import PageResult, Panel
+from komawari.title_picture import write_title_picture
 
 # The Vita cannot hold a picture wider or taller than this (its texture limit).
 MAX_WIDTH = 4096
@@ -19,36 +25,109 @@ MAX_HEIGHT = 2560
 # Height of the cover picture the reader shows when a comic is being chosen.
 # It is the height of the Vita's screen.
 COVER_HEIGHT = 544
+# The picture of the comic's title, subtitle and author, shown under the cover.
+TITLE_PICTURE = "title.png"
 # JPEG, because the Vita decodes it several times faster than PNG.
 JPEG_QUALITY = 90
+# A page that the Vita would take longer than this to load is made smaller, until
+# it takes about this long. In a manga volume these are the colour spreads and
+# the dust jacket; a normal grey page takes about a second.
+SLOWEST_LOAD_SECONDS = 3.0
+# Two kinds of picture are then made smaller once more, to this share of their
+# width and height, because they are the slowest to load: a picture that is
+# wider than tall, such as a two-page spread or a dust jacket, and any picture
+# in colour, which costs the Vita three times as much per pixel as a grey one.
+# Tried on a Vita: at 0.7 these pictures were sharp enough, also zoomed in, and
+# loaded in half the time. The owner then chose 0.8, for a little more
+# sharpness; that takes about a third longer than 0.7.
+HEAVY_PAGE_SCALE = 0.8
 
 
-def make_vita_copy(book_dir: Path, target_dir: Path) -> Book:
+@dataclass(frozen=True)
+class VitaCopy:
+    """What make_vita_copy wrote."""
+
+    book: Book
+    pages_made_smaller: int  # pages below the usual size, so that they load faster
+
+
+@dataclass(frozen=True)
+class _SmallPage:
+    page: PageResult
+    made_smaller: bool
+
+
+def make_vita_copy(book_dir: Path, target_dir: Path, details: Details, fonts_dir: Path) -> VitaCopy:
     """Writes target_dir from the full-size pages and panels.json in book_dir."""
-    book = load_book(book_dir / "panels.json")
+    book = _with_details(load_book(book_dir / "panels.json"), details)
     source_pages = book_dir / "pages"
     (target_dir / "pages").mkdir(parents=True, exist_ok=True)
 
     shrink = partial(_shrink_page, source_dir=source_pages, target_dir=target_dir / "pages")
     # Resizing is slow and each page is independent, so several run at once.
     with ThreadPoolExecutor() as pool:
-        pages = list(pool.map(shrink, book.pages))
+        small_pages = list(pool.map(shrink, book.pages))
 
     _write_cover(source_pages / _cover_page(book).file, target_dir / "cover.jpg")
-    small_book = replace(book, pages=pages)
+    write_title_picture(details, fonts_dir, target_dir / TITLE_PICTURE)
+    small_book = replace(book, pages=[small.page for small in small_pages])
     save_book(small_book, target_dir / "panels.json")
-    return small_book
+    return VitaCopy(book=small_book, pages_made_smaller=sum(small.made_smaller for small in small_pages))
 
 
-def _shrink_page(page: PageResult, source_dir: Path, target_dir: Path) -> PageResult:
-    scale = min(1.0, MAX_WIDTH / page.width, MAX_HEIGHT / page.height)
-    width, height = round(page.width * scale), round(page.height * scale)
-    file = f"{Path(page.file).stem}.jpg"
+def refresh_details(target_dir: Path, details: Details, fonts_dir: Path) -> bool:
+    """Brings the title, subtitle and author of a finished Vita copy up to date.
+
+    Returns False if they already were. panels.json is written again too: a
+    changed panels.json is how `komawari transfer` sees that a comic changed.
+    """
+    panels_file = target_dir / "panels.json"
+    book = load_book(panels_file)
+    title_picture = target_dir / TITLE_PICTURE
+    if book == _with_details(book, details) and title_picture.is_file():
+        return False
+    write_title_picture(details, fonts_dir, title_picture)
+    save_book(_with_details(book, details), panels_file)
+    return True
+
+
+def _with_details(book: Book, details: Details) -> Book:
+    return replace(book, title=details.title, subtitle=details.subtitle, author=details.author)
+
+
+def _shrink_page(page: PageResult, source_dir: Path, target_dir: Path) -> _SmallPage:
     with Image.open(source_dir / page.file) as image:
-        small = _plain(image).resize((width, height), Image.Resampling.LANCZOS)
-    small.save(target_dir / file, quality=JPEG_QUALITY)
+        plain = _plain(image)
+    in_colour = plain.mode != "L"
+
+    scale = min(1.0, MAX_WIDTH / page.width, MAX_HEIGHT / page.height)
+    width, height, jpeg = _resized_jpeg(plain, page, scale)
+    seconds = load_seconds(width * height, len(jpeg), in_colour)
+    is_slow = seconds > SLOWEST_LOAD_SECONDS
+    is_heavy = page.width > page.height or in_colour
+    if is_slow:
+        # Loading time follows the number of pixels, which follows the square of the scale.
+        scale *= math.sqrt(SLOWEST_LOAD_SECONDS / seconds)
+    if is_heavy:
+        scale *= HEAVY_PAGE_SCALE
+    made_smaller = is_slow or is_heavy
+    if made_smaller:
+        width, height, jpeg = _resized_jpeg(plain, page, scale)
+
+    file = f"{Path(page.file).stem}.jpg"
+    (target_dir / file).write_bytes(jpeg)
     panels = [_shrink_panel(panel, scale) for panel in page.panels]
-    return PageResult(file=file, width=width, height=height, panels=panels)
+    small_page = PageResult(file=file, width=width, height=height, panels=panels)
+    return _SmallPage(page=small_page, made_smaller=made_smaller)
+
+
+def _resized_jpeg(plain: Image.Image, page: PageResult, scale: float) -> tuple[int, int, bytes]:
+    """The page at this scale as a JPEG file in memory, with its width and height."""
+    width, height = round(page.width * scale), round(page.height * scale)
+    small = plain.resize((width, height), Image.Resampling.LANCZOS)
+    buffer = io.BytesIO()
+    small.save(buffer, "JPEG", quality=JPEG_QUALITY)
+    return width, height, buffer.getvalue()
 
 
 def _shrink_panel(panel: Panel, scale: float) -> Panel:

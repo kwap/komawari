@@ -52,6 +52,9 @@ add_executable(reader
   reader/shelf.c     # the screen for choosing a comic
   reader/reading.c   # the screen for reading one, panel by panel
   reader/book.c      # reads a comic's panels.json
+  reader/file.c      # reads a whole file from the memory card
+  reader/pages.c     # keeps the pictures of the pages ready, loading them in the background
+  reader/picture.c   # loads a picture file and logs how long that took
   reader/shot.c      # how a page is framed on the screen
   reader/motion.c    # timing of movements
   reader/draw.c      # simple shapes

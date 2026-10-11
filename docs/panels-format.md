@@ -7,14 +7,19 @@ One file per comic. It lists the pages in reading order and, for each page, the 
 - `books/NAME/panels.json`, with the full-size pages in `books/NAME/pages/`.
 - `for_vita/NAME/panels.json`, with the smaller pages in `for_vita/NAME/pages/`. This folder is what the reader loads, and what is copied to the Vita.
 
-A folder in `for_vita/` also holds `cover.jpg`, 544 pixels high, which the reader shows where a comic is chosen. It is made from the first page that is taller than wide.
+A folder in `for_vita/` also holds two pictures that the reader shows where a comic is chosen:
+
+- `cover.jpg`, 544 pixels high. It is made from the first page that is taller than wide.
+- `title.png`, 720 x 100 pixels, see-through around the letters: the comic's title, subtitle and author, drawn in the fonts of the reader's artwork. The reader cannot write text, so it shows this picture under the cover. A comic without it has no text there.
 
 ## Example
 
 ```json
 {
   "format": 1,
-  "title": "My Comic 1",
+  "title": "My Comic",
+  "subtitle": "Part 1",
+  "author": "Some Body",
   "reading_direction": "rtl",
   "detector": "kumiko",
   "pages": [
@@ -44,7 +49,8 @@ The numbers in the example are made up.
 | Field | Meaning |
 |---|---|
 | `format` | Version of this structure, a whole number. A reader refuses a number it does not know. |
-| `title` | Name of the comic, taken from the archive's file name. |
+| `title` | Name of the comic. From the text file next to the archive (`NAME.txt`, see `src/komawari/details.py`), else the archive's file name. |
+| `subtitle`, `author` | From the same text file; empty when not given. Added on 2026-10-11 without a new format number: a file from before has neither, and the reader does not read them. It shows `title.png` instead. |
 | `reading_direction` | `"rtl"` or `"ltr"`. The panels are already in order; the reader can use this for the direction of page turns. |
 | `detector` | The tool that produced the panels. Information only. |
 | `pages` | The pages, in reading order. |

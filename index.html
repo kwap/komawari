@@ -274,6 +274,12 @@ uv sync
 <p>Komawari expects manga, read right to left. For a comic read left to right, run this instead, with the name of your file:</p>
 <pre><code>uv run komawari prepare &quot;comics/My Comic.cbz&quot; --ltr --force
 </code></pre>
+<p>Under each cover the reader shows a title, a subtitle and an author. To set them, put a text file next to the comic, with the same name and the ending <code>.txt</code>. For <code>My Comic.cbz</code> that is <code>My Comic.txt</code>:</p>
+<pre><code>title: My Comic
+subtitle: Part 1
+author: Some Body
+</code></pre>
+<p>Then run <code>uv run komawari prepare</code> again; this takes a moment. Without the file, the title is the name of the comic's file.</p>
 <h2 id="3-copy-to-the-vita"><span>3</span>Copy to the Vita</h2>
 <p>These steps have not been tried with a real Vita yet.</p>
 <ol>
@@ -304,40 +310,63 @@ uv run komawari transfer
 <tr>
 <th></th>
 <th>Buttons</th>
+<th>Touch screen</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>Choose a comic</td>
 <td>D-pad left and right</td>
+<td>Slide the covers, or tap one</td>
 </tr>
 <tr>
 <td>Open it</td>
 <td>Cross</td>
+<td>Tap the cover in the middle</td>
 </tr>
 <tr>
 <td>Next panel</td>
 <td>D-pad right, R or Cross</td>
+<td></td>
 </tr>
 <tr>
 <td>Previous panel</td>
 <td>D-pad left or L</td>
+<td></td>
 </tr>
 <tr>
 <td>Whole page and back</td>
 <td>D-pad up or Triangle</td>
+<td></td>
+</tr>
+<tr>
+<td>Look closer</td>
+<td></td>
+<td>Spread two fingers</td>
+</tr>
+<tr>
+<td>Move the picture</td>
+<td></td>
+<td>Drag it with one finger</td>
+</tr>
+<tr>
+<td>Put the picture back</td>
+<td></td>
+<td>Tap it</td>
 </tr>
 <tr>
 <td>Back to your comics</td>
 <td>Circle</td>
+<td></td>
 </tr>
 <tr>
 <td>Leave</td>
 <td>PS button</td>
+<td></td>
 </tr>
 </tbody>
 </table>
-<p>With only one comic on the Vita, it opens straight away.</p>
+<p>With only one comic on the Vita, it opens straight away. With three or more, the covers go round: after the last comic comes the first again.</p>
 <h2 id="commands">Commands</h2>
 <p>Run them in the <code>komawari</code> folder.</p>
 <table>
