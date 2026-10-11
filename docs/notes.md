@@ -20,6 +20,8 @@ The reader works in a window on the computer, in the Vita3K emulator and on a re
 
 ## Done last
 
+- The reader remembers the place in every comic and the comic read last (2026-10-11, `reader/place.c`). Tried in the desktop build: after closing and starting again, the shelf opens on the last comic and each comic opens at its page and panel.
+- The lettering on the page behind the bubble moved right and got a little smaller, clear of the title the Vita writes down the left edge when the PS button is pressed. Not seen on the Vita yet.
 - The shelf loads its covers in the background and keeps them between visits (2026-10-11, `reader/covers.c`). Tried only in the desktop build.
 - More comics prepared and copied to the Vita over FTP (2026-10-11), 17 in all now, 5.0 GB: digital manga volumes, scanned manga volumes, a single issue and an omnibus of western comics. Every file on the Vita was checked against its size here. None of the new ones has been opened on the Vita yet. Their archives showed four things `prepare` could not handle, now fixed in `src/komawari/archive.py` and `src/komawari/pages.py`: brackets in file names, pages inside a folder, first pages listed last, and page numbers written in other ways. See "What preparing a comic gives".
 - A tall page shown whole turns with the Vita (2026-10-11): held upright, it fills the screen. `reader/input.c` reads the motion sensor; `reader/shot.c` frames the page for the upright screen; `reader/reading.c` draws it turned. Tried only in the desktop build, where the Tab key stands in for turning the Vita. Not committed yet.
@@ -141,7 +143,7 @@ Built on 2026-10-11, tried only in the desktop build with 17 comics.
 - Texture memory. SDL keeps all pictures in one pool, as large as the Vita's free graphics memory when the first picture is made (the Vita has 128 MB of it in all). In 16-bit colour a normal page takes 9 MB, a spread 18 MB and the widest picture 21 MB. Four pictures are kept at most, so 84 MB at the very worst and about 27 MB in ordinary reading. If a picture loaded ahead does not fit, it is dropped and loaded again when the reader gets there; this path was never seen running.
 - The home-screen page was seen on the device: the Vita's own icons covered part of the name, which was then moved down (not yet seen again). The bubble was not judged; the preview (`build/artwork-preview.png`) places the pictures where Vita3K's source says the Vita puts them.
 - Try everything on Linux.
-- Older candidates: remember the place in each comic; controls that follow the reading direction.
+- Older candidate: controls that follow the reading direction.
 
 ## Open questions
 
@@ -228,7 +230,7 @@ The emulator:
 
 ## On the Vita: what the user's guide leaves out
 
-- Each comic is one folder in `ux0:data/komawari/`, holding `panels.json`, `cover.jpg`, `title.png` and `pages/`. The folder names are free; the reader lists every folder that holds a `panels.json`, sorted by name.
+- Each comic is one folder in `ux0:data/komawari/`, holding `panels.json`, `cover.jpg`, `title.png` and `pages/`. The reader adds `place.txt` to it, the page and panel where its user stopped ("12 3", counted from 1), and keeps `last-comic.txt` beside the folders, the folder name of the comic read last. Deleting those files makes the reader forget. The folder names are free; the reader lists every folder that holds a `panels.json`, sorted by name.
 - `komawari.vpk` can be installed from any folder on the card. After a new build, copy the new one over and install it the same way; the comics stay.
 - Copying over Wi-Fi instead of USB: in VitaShell press START, set "SELECT button" to "FTP" and press SELECT. VitaShell shows an address like `ftp://192.168.1.20:1337`. With an FTP program, copy the comic folders into `ux0:/data/komawari/` and `komawari.vpk` into `ux0:/data/`.
 - Copying over FTP was tried on a real Vita (2026-10-10): three volumes, 1.9 GB, at about 1.3 MB per second, so roughly 8 minutes per volume. Every file arrived with the right size.
@@ -326,6 +328,7 @@ Kumiko was chosen: an open licence, adjustable, and it keeps sound effects that 
 - Vita programs are built with CMake into a `.vpk` package. Running one needs a Vita with HENkaku, h-encore or similar.
 - The pictures for the home screen must be PNG files with a palette of at most 256 colours.
 - With the layout style `psmobile`, the Vita puts its start button at x 520 to 800, y 155 to 313 of the 840 x 500 page behind the bubble.
+- Seen on a Vita: the system lays a row of its own round icons over the top edge of that page, and with the PS button pressed it writes the program's title down the page's left edge. How wide those are was not measured; the lettering keeps about 80 pixels from the top and from the left.
 
 ## To check on Linux
 

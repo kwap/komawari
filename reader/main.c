@@ -9,6 +9,7 @@
 #include "draw.h"
 #include "input.h"
 #include "library.h"
+#include "place.h"
 #include "reading.h"
 #include "screen.h"
 #include "shelf.h"
@@ -71,7 +72,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    int chosen = 0;
+    /* The shelf opens on the comic that was read last. */
+    int chosen = place_last_comic(&library, library_dir);
     /* With a single comic there is nothing to choose, so it opens straight away.
        The shelf is still where the user lands when leaving that comic. */
     int skip_shelf = library.count == 1;
@@ -83,6 +85,7 @@ int main(int argc, char *argv[])
             }
         }
         skip_shelf = 0;
+        place_remember_comic(library_dir, library.comic_dirs[chosen]);
         if (reading_run(window, renderer, library.comic_dirs[chosen]) == READING_ENDED_QUIT) {
             break;
         }

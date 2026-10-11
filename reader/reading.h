@@ -17,7 +17,8 @@ typedef enum {
     READING_ENDED_QUIT  /* the user closed the reader */
 } ReadingEnd;
 
-/* Shows the comic in comic_dir until the user leaves it. */
+/* Shows the comic in comic_dir until the user leaves it. It starts where the
+   reader stopped the last time, and keeps that place saved (place.h). */
 ReadingEnd reading_run(SDL_Window *window, SDL_Renderer *renderer, const char *comic_dir);
 
 #endif

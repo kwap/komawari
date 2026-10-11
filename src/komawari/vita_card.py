@@ -92,7 +92,9 @@ def copy_comic(comic_dir: Path, card: Path) -> None:
     reader only lists a folder once that file is in it, so it never sees half a comic.
     """
     target_dir = card / COMICS_FOLDER / comic_dir.name
-    files = sorted(path for path in comic_dir.rglob("*") if path.is_file())
+    # place.txt is the reader's note of where its user stopped reading. It belongs
+    # to the Vita: a copy from this computer must not replace it.
+    files = sorted(path for path in comic_dir.rglob("*") if path.is_file() and path.name != "place.txt")
     files.sort(key=lambda path: path.name == "panels.json")  # False sorts before True
     for number, source in enumerate(files, start=1):
         target = target_dir / source.relative_to(comic_dir)

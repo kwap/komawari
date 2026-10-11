@@ -5,6 +5,7 @@
 #include "input.h"
 #include "motion.h"
 #include "pages.h"
+#include "place.h"
 #include "screen.h"
 #include "shot.h"
 
@@ -30,6 +31,11 @@ typedef struct {
     int view;       /* index of the panel shown; 0 on a page without panels */
     int whole_page; /* 1 while the whole page is shown instead of one panel */
     int turn;       /* how the Vita is held, as input_turn tells it */
+
+    /* The place last written to the memory card, so that it is only written
+       again when the reader has moved on. */
+    int saved_page;
+    int saved_view;
 
     /* What is on screen. The picture glides from one shot to another. While
        the picture of the page being read is still loading, the page that was
@@ -82,6 +88,17 @@ static void step_back(Reading *reading)
         reading->page -= 1;
         reading->view = view_count(current_page(reading)) - 1;
     }
+}
+
+/* Writes the reader's place to the memory card, if it moved since the last time. */
+static void save_place(Reading *reading)
+{
+    if (reading->page == reading->saved_page && reading->view == reading->saved_view) {
+        return;
+    }
+    place_save(reading->comic_dir, reading->page, reading->view);
+    reading->saved_page = reading->page;
+    reading->saved_view = reading->view;
 }
 
 /* The shot on screen right now, which may be part of the way through a glide. */
@@ -381,6 +398,18 @@ ReadingEnd reading_run(SDL_Window *window, SDL_Renderer *renderer, const char *c
         book_free(&reading.book);
         return READING_ENDED_BACK;
     }
+    /* Carry on where the reader stopped the last time, if the comic still has that place. */
+    place_load(comic_dir, &reading.page, &reading.view);
+    if (reading.page < 0 || reading.page >= reading.book.page_count) {
+        reading.page = 0;
+        reading.view = 0;
+    }
+    if (reading.view < 0 || reading.view >= view_count(current_page(&reading))) {
+        reading.view = 0;
+    }
+    reading.saved_page = reading.page;
+    reading.saved_view = reading.view;
+
     reading.shown_page = -1;
     reading.turn = input_turn();
     ask_for_page(&reading, SDL_GetTicks());
@@ -397,6 +426,9 @@ ReadingEnd reading_run(SDL_Window *window, SDL_Renderer *renderer, const char *c
                                             motion_running(reading.fade_start, FADE_MS, now))) {
             pages_take_loaded(reading.pages);
             show_page_if_ready(&reading);
+            /* The place is saved here as well, a moment after each step and
+               not only on leaving: the Vita can close the reader without warning. */
+            save_place(&reading);
             now = SDL_GetTicks();
         }
         draw_frame(&reading, now);
@@ -424,6 +456,7 @@ ReadingEnd reading_run(SDL_Window *window, SDL_Renderer *renderer, const char *c
         }
     }
 
+    save_place(&reading);
     pages_close(reading.pages);
     book_free(&reading.book);
     return end;

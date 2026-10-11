@@ -53,6 +53,7 @@ add_executable(reader
   reader/covers.c    # loads the shelf's covers in the background and keeps them
   reader/reading.c   # the screen for reading one, panel by panel
   reader/book.c      # reads a comic's panels.json
+  reader/place.c     # remembers the comic read last and the place in every comic
   reader/file.c      # reads a whole file from the memory card
   reader/pages.c     # keeps the pictures of the pages ready, loading them in the background
   reader/picture.c   # loads a picture file and logs how long that took
